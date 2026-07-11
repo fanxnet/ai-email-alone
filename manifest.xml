@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0" xmlns:mailappor="http://schemas.microsoft.com/office/mailappversionoverrides/1.0" xsi:type="MailApp">
-  <Id>db42d064-6dfd-428f-a689-97ddf2d746d3</Id>
+  <Id>98af728e-46d1-4390-9696-06a7ca4f5738</Id>
   <Version>1.3.2.0</Version>
   <ProviderName>Fanxnet</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
@@ -8,10 +8,11 @@
   <Description DefaultValue="AI-powered email writer and composer for Outlook, powered by Gemini."/>
   <IconUrl DefaultValue="https://fanxnet.github.io/ai-email-alone/assets/icon-64.png"/>
   <HighResolutionIconUrl DefaultValue="https://fanxnet.github.io/ai-email-alone/assets/icon-128.png"/>
-  <SupportUrl DefaultValue="https://fanxnet.com/support"/>
+  <SupportUrl DefaultValue="https://fanet.cloudns.ch/support"/>
   <AppDomains>
-    <AppDomain>https://fanxnet.com</AppDomain>
     <AppDomain>https://fanxnet.github.io</AppDomain>
+    <AppDomain>https://fanet.cloudns.ch</AppDomain>
+    <AppDomain>https://192.168.6.1</AppDomain>
   </AppDomains>
   <Hosts>
     <Host Name="Mailbox"/>
