@@ -96,14 +96,14 @@ const DEEPSEEK_MODELS: { label: string; value: string }[] = [
 
 const $ = (id: string) => document.getElementById(id);
 
-/** Validate Google Gemini API key format (starts with AIza, 39 chars). */
+/** Validate Google Gemini API key format (starts with AIza or AQ). */
 function isValidGeminiApiKeyFormat(key: string): boolean {
-  return /^AIza[0-9A-Za-z_-]{35}$/.test(key);
+  return /^(?:AIza|AQ)/.test(key);
 }
 
 /** Validate DeepSeek API key format (starts with sk-). */
 function isValidDeepSeekApiKeyFormat(key: string): boolean {
-  return /^sk-[0-9A-Za-z_-]{20,}$/.test(key.trim());
+  return /^sk-/.test(key.trim());
 }
 
 function showElement(id: string): void {
@@ -1069,7 +1069,7 @@ async function handleTestConnection(): Promise<void> {
   }
 
   if (provider === 'gemini' && !isValidGeminiApiKeyFormat(apiKey)) {
-    if (geminiKeyError) { geminiKeyError.textContent = 'Invalid Gemini key format. Must start with "AIza" and be 39 characters.'; geminiKeyError.classList.remove('hidden'); }
+    if (geminiKeyError) { geminiKeyError.textContent = 'Invalid Gemini key format. Must start with "AIza" or "AQ".'; geminiKeyError.classList.remove('hidden'); }
     return;
   }
   if (provider === 'deepseek' && !isValidDeepSeekApiKeyFormat(apiKey)) {
@@ -1443,7 +1443,7 @@ Office.onReady((info) => {
       if (provider === 'gemini' && geminiKey && !isValidGeminiApiKeyFormat(geminiKey)) {
         const keyError = $('api-key-error');
         if (keyError) {
-          keyError.textContent = 'Invalid Gemini key format. Must start with "AIza" and be 39 characters.';
+          keyError.textContent = 'Invalid Gemini key format. Must start with "AIza" or "AQ".';
           keyError.classList.remove('hidden');
         }
         return;
