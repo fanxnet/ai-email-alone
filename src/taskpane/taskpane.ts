@@ -12,7 +12,8 @@
 import '../styles/main.css';
 import './taskpane.css';
 import { initGeminiClient, generateText, generateJson, Type } from '../services/gemini';
-import { generateText as deepseekGenerateText } from '../services/deepseek';
+import { generateText as deepseekGenerateText, DeepSeekError } from '../services/deepseek';
+import { generateText as aiGenerateText } from '../services/ai-service';
 import { getItemMode } from '../services/outlook';
 import { buildGoalText, getTemplates, saveTemplate, deleteTemplate } from '../features/settings';
 import {
@@ -630,7 +631,7 @@ Return ONLY 3 lines, one suggestion per line. No numbering, no bullets, no quote
 Email:
 ${emailSummary}`;
 
-    const result = await generateText(prompt, {
+    const result = await aiGenerateText(prompt, {
       temperature: 0.9,
       maxOutputTokens: 1024,
     });
@@ -1087,15 +1088,23 @@ async function handleTestConnection(): Promise<void> {
       initGeminiClient(apiKey);
       await generateText('Say hello in one word.', { maxOutputTokens: 20, temperature: 0.5 });
     } else {
-      await deepseekGenerateText('Return exactly the word "test". No other text.', { maxTokens: 10, temperature: 0.5 });
+      await deepseekGenerateText('Reply with the single word "test" and nothing else.', { maxTokens: 15, temperature: 0.5 });
     }
     resultEl.style.color = 'var(--color-aic-success)';
     resultEl.textContent = '✓ Connection successful! API key is valid.';
     if (btn) btn.classList.add('aic-btn--success');
     setTimeout(() => btn?.classList.remove('aic-btn--success'), 2000);
   } catch (err: any) {
-    resultEl.style.color = 'var(--color-aic-error-text)';
-    resultEl.textContent = `✗ ${err.message || 'Connection failed.'}`;
+    // If deepseek returns an empty response while other features work, treat as success
+    if (err instanceof DeepSeekError && err.code === 'CONTENT_FILTERED') {
+      resultEl.style.color = 'var(--color-aic-success)';
+      resultEl.textContent = '✓ Connection successful! API key is valid.';
+      if (btn) btn.classList.add('aic-btn--success');
+      setTimeout(() => btn?.classList.remove('aic-btn--success'), 2000);
+    } else {
+      resultEl.style.color = 'var(--color-aic-error-text)';
+      resultEl.textContent = `✗ ${err.message || 'Connection failed.'}`;
+    }
   } finally {
     if (btn) btn.removeAttribute('disabled');
   }
