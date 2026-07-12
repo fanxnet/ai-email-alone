@@ -12,6 +12,7 @@
 import '../styles/main.css';
 import './taskpane.css';
 import { initGeminiClient, generateText, generateJson, Type } from '../services/gemini';
+import { generateText as deepseekGenerateText } from '../services/deepseek';
 import { getItemMode } from '../services/outlook';
 import { buildGoalText, getTemplates, saveTemplate, deleteTemplate } from '../features/settings';
 import {
@@ -70,14 +71,39 @@ import {
 } from '../features/settings';
 
 // ---------------------------------------------------------------------------
+// Model options for each provider
+// ---------------------------------------------------------------------------
+
+const GEMINI_MODELS: { label: string; value: string }[] = [
+  { label: 'Gemini 3.1 Pro Preview', value: 'gemini-3.1-pro-preview' },
+  { label: 'Gemini 3 Flash Preview', value: 'gemini-3-flash-preview' },
+  { label: 'Gemini 3 Pro Preview', value: 'gemini-3-pro-preview' },
+  { label: 'Gemini 2.5 Flash', value: 'gemini-2.5-flash' },
+  { label: 'Gemini 2.5 Flash-Lite', value: 'gemini-2.5-flash-lite' },
+  { label: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro' },
+];
+
+const DEEPSEEK_MODELS: { label: string; value: string }[] = [
+  { label: 'DeepSeek V4 Flash', value: 'deepseek-v4-flash' },
+  { label: 'DeepSeek V4 Pro', value: 'deepseek-v4-pro' },
+  { label: 'DeepSeek Chat', value: 'deepseek-chat' },
+  { label: 'DeepSeek Reasoner', value: 'deepseek-reasoner' },
+];
+
+// ---------------------------------------------------------------------------
 // DOM helpers
 // ---------------------------------------------------------------------------
 
 const $ = (id: string) => document.getElementById(id);
 
 /** Validate Google Gemini API key format (starts with AIza, 39 chars). */
-function isValidApiKeyFormat(key: string): boolean {
+function isValidGeminiApiKeyFormat(key: string): boolean {
   return /^AIza[0-9A-Za-z_-]{35}$/.test(key);
+}
+
+/** Validate DeepSeek API key format (starts with sk-). */
+function isValidDeepSeekApiKeyFormat(key: string): boolean {
+  return /^sk-[0-9A-Za-z_-]{20,}$/.test(key.trim());
 }
 
 function showElement(id: string): void {
@@ -967,6 +993,170 @@ async function handleCopyTranslation(): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Provider-aware helpers
+// ---------------------------------------------------------------------------
+
+/** Populate the model select dropdown based on current provider. */
+function populateModelDropdown(provider: string, selectedModel?: string): void {
+  const select = $('settings-model') as HTMLSelectElement;
+  if (!select) return;
+
+  const models = provider === 'deepseek' ? DEEPSEEK_MODELS : GEMINI_MODELS;
+  select.innerHTML = '';
+  models.forEach((m) => {
+    const opt = document.createElement('option');
+    opt.value = m.value;
+    opt.textContent = m.label;
+    if (m.value === selectedModel) opt.selected = true;
+    select.appendChild(opt);
+  });
+
+  // Update hint text
+  const hint = $('settings-model-hint');
+  if (hint) {
+    if (provider === 'deepseek') {
+      hint.textContent = 'DeepSeek models: Flash for speed, Pro for reasoning.';
+    } else {
+      hint.textContent = 'Flash models are faster and cheaper. Pro models offer deeper reasoning.';
+    }
+  }
+}
+
+/** Show/hide API key groups based on provider. */
+function toggleApiKeyGroups(provider: string): void {
+  const geminiGroup = $('settings-gemini-key-group');
+  const deepseekGroup = $('settings-deepseek-key-group');
+  if (!geminiGroup || !deepseekGroup) return;
+
+  if (provider === 'gemini') {
+    geminiGroup.classList.remove('hidden');
+    deepseekGroup.classList.add('hidden');
+  } else {
+    geminiGroup.classList.add('hidden');
+    deepseekGroup.classList.remove('hidden');
+  }
+}
+
+/** Get the currently configured API key for the given provider. */
+function getApiKeyFromSettings(provider: string, settings: AIComposeSettings): string {
+  return provider === 'gemini' ? settings.geminiApiKey : settings.deepseekApiKey;
+}
+
+/** Test connection with the current provider. */
+async function handleTestConnection(): Promise<void> {
+  const providerSelector = $('settings-provider') as HTMLSelectElement;
+  const provider = providerSelector?.value || 'gemini';
+
+  const geminiKey = ($('settings-api-key') as HTMLInputElement)?.value?.trim() || '';
+  const deepseekKey = ($('settings-deepseek-api-key') as HTMLInputElement)?.value?.trim() || '';
+  const apiKey = provider === 'gemini' ? geminiKey : deepseekKey;
+
+  const resultEl = $('test-connection-result');
+  const btn = $('btn-test-connection');
+  const geminiKeyError = $('api-key-error');
+  const deepseekKeyError = $('deepseek-api-key-error');
+
+  if (!resultEl) return;
+
+  // Validate format
+  if (!apiKey) {
+    if (provider === 'gemini') {
+      if (geminiKeyError) { geminiKeyError.textContent = 'Please enter your Gemini API key.'; geminiKeyError.classList.remove('hidden'); }
+    } else {
+      if (deepseekKeyError) { deepseekKeyError.textContent = 'Please enter your DeepSeek API key.'; deepseekKeyError.classList.remove('hidden'); }
+    }
+    return;
+  }
+
+  if (provider === 'gemini' && !isValidGeminiApiKeyFormat(apiKey)) {
+    if (geminiKeyError) { geminiKeyError.textContent = 'Invalid Gemini key format. Must start with "AIza" and be 39 characters.'; geminiKeyError.classList.remove('hidden'); }
+    return;
+  }
+  if (provider === 'deepseek' && !isValidDeepSeekApiKeyFormat(apiKey)) {
+    if (deepseekKeyError) { deepseekKeyError.textContent = 'Invalid DeepSeek key format. Must start with "sk-".'; deepseekKeyError.classList.remove('hidden'); }
+    return;
+  }
+  // Clear errors
+  if (geminiKeyError) geminiKeyError.classList.add('hidden');
+  if (deepseekKeyError) deepseekKeyError.classList.add('hidden');
+
+  // Show testing state
+  resultEl.classList.remove('hidden');
+  resultEl.style.color = 'var(--color-aic-text-secondary)';
+  resultEl.textContent = 'Testing connection…';
+  if (btn) btn.setAttribute('disabled', 'true');
+
+  try {
+    if (provider === 'gemini') {
+      initGeminiClient(apiKey);
+      await generateText('Say hello in one word.', { maxOutputTokens: 20, temperature: 0.5 });
+    } else {
+      await deepseekGenerateText('Say hello in one word.', { maxTokens: 20, temperature: 0.5 });
+    }
+    resultEl.style.color = 'var(--color-aic-success)';
+    resultEl.textContent = '✓ Connection successful! API key is valid.';
+    if (btn) btn.classList.add('aic-btn--success');
+    setTimeout(() => btn?.classList.remove('aic-btn--success'), 2000);
+  } catch (err: any) {
+    resultEl.style.color = 'var(--color-aic-error-text)';
+    resultEl.textContent = `✗ ${err.message || 'Connection failed.'}`;
+  } finally {
+    if (btn) btn.removeAttribute('disabled');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Settings save / load
+// ---------------------------------------------------------------------------
+
+function applySettingsToForms(s: AIComposeSettings): void {
+  const providerSelect = $('settings-provider') as HTMLSelectElement;
+  if (providerSelect) {
+    providerSelect.value = s.aiProvider;
+    // Update UI for provider
+    toggleApiKeyGroups(s.aiProvider);
+    populateModelDropdown(s.aiProvider, s.defaultModel);
+  }
+
+  // Gemini API key
+  const geminiInput = $('settings-api-key') as HTMLInputElement;
+  if (geminiInput) geminiInput.value = s.geminiApiKey;
+  // DeepSeek API key
+  const deepseekInput = $('settings-deepseek-api-key') as HTMLInputElement;
+  if (deepseekInput) deepseekInput.value = s.deepseekApiKey;
+
+  // Tone selects
+  const draftTone = $('draft-tone') as HTMLSelectElement | null;
+  const replyTone = $('reply-tone') as HTMLSelectElement | null;
+  const settingsTone = $('settings-tone') as HTMLSelectElement | null;
+  if (draftTone) draftTone.value = s.defaultTone;
+  if (replyTone) replyTone.value = s.defaultTone;
+  if (settingsTone) settingsTone.value = s.defaultTone;
+
+  // Summary style radio buttons
+  const summaryRadio = document.querySelector(
+    `input[name="summary-style"][value="${s.defaultSummaryStyle}"]`,
+  ) as HTMLInputElement | null;
+  if (summaryRadio) summaryRadio.checked = true;
+
+  // Settings form additional fields
+  const sStyle = $('settings-summary-style') as HTMLSelectElement | null;
+  const sLang = $('settings-language') as HTMLSelectElement | null;
+  const translateLang = $('translate-language') as HTMLSelectElement | null;
+  if (sStyle) sStyle.value = s.defaultSummaryStyle;
+  if (sLang) sLang.value = s.defaultLanguage;
+  if (translateLang) translateLang.value = s.defaultLanguage;
+
+  // Rules form
+  for (const [key, enabled] of Object.entries(s.presetRules)) {
+    const cb = $(`rule-${key}`) as HTMLInputElement | null;
+    if (cb) cb.checked = enabled;
+  }
+  const customRulesEl = $('custom-rules') as HTMLTextAreaElement | null;
+  if (customRulesEl) customRulesEl.value = s.customRules;
+}
+
+// ---------------------------------------------------------------------------
 // Initialization
 // ---------------------------------------------------------------------------
 
@@ -1014,53 +1204,15 @@ Office.onReady((info) => {
     // Load settings and initialize Gemini client from stored API key
     const settings = loadSettings();
     try {
-      const apiKey = settings.apiKey || (window as any).__AICompose_API_KEY__ || '';
-      if (apiKey) {
-        initGeminiClient(apiKey);
+      const geminiKey = settings.geminiApiKey || (window as any).__AICompose_API_KEY__ || '';
+      if (geminiKey) {
+        initGeminiClient(geminiKey);
       }
     } catch {
       // Client will be initialized when settings are saved
     }
 
-    // Populate feature defaults from settings
-    const applySettingsToForms = (s: AIComposeSettings): void => {
-      // Tone selects
-      const draftTone = $('draft-tone') as HTMLSelectElement | null;
-      const replyTone = $('reply-tone') as HTMLSelectElement | null;
-      if (draftTone) draftTone.value = s.defaultTone;
-      if (replyTone) replyTone.value = s.defaultTone;
-
-      // Summary style radio buttons
-      const summaryRadio = document.querySelector(
-        `input[name="summary-style"][value="${s.defaultSummaryStyle}"]`,
-      ) as HTMLInputElement | null;
-      if (summaryRadio) summaryRadio.checked = true;
-
-      // Translation language
-      const langSelect = $('translate-language') as HTMLSelectElement | null;
-      if (langSelect) langSelect.value = s.defaultLanguage;
-
-      // Settings form itself
-      const sApiKey = $('settings-api-key') as HTMLInputElement | null;
-      const sModel = $('settings-model') as HTMLSelectElement | null;
-      const sTone = $('settings-tone') as HTMLSelectElement | null;
-      const sStyle = $('settings-summary-style') as HTMLSelectElement | null;
-      const sLang = $('settings-language') as HTMLSelectElement | null;
-      if (sApiKey) sApiKey.value = s.apiKey;
-      if (sModel) sModel.value = s.defaultModel;
-      if (sTone) sTone.value = s.defaultTone;
-      if (sStyle) sStyle.value = s.defaultSummaryStyle;
-      if (sLang) sLang.value = s.defaultLanguage;
-
-      // Rules form
-      for (const [key, enabled] of Object.entries(s.presetRules)) {
-        const cb = $(`rule-${key}`) as HTMLInputElement | null;
-        if (cb) cb.checked = enabled;
-      }
-      const customRulesEl = $('custom-rules') as HTMLTextAreaElement | null;
-      if (customRulesEl) customRulesEl.value = s.customRules;
-    };
-
+    // Populate forms from settings
     applySettingsToForms(settings);
 
     // --- Outlook theme detection (light/dark) ---
@@ -1082,7 +1234,7 @@ Office.onReady((info) => {
     }
 
     // --- Tab switching + dropdown ---
-    const DROPDOWN_TABS = new Set(['summarize', 'improve', 'extract']);
+    const DROPDOWN_TABS = new Set(['summarize', 'improve', 'extract', 'translate']);
     const moreBtn = $('tab-more');
     const dropdown = $('more-dropdown');
     const splitContainer = moreBtn?.closest('.aic-split');
@@ -1231,6 +1383,133 @@ Office.onReady((info) => {
       toggleDropdown(false);
     });
 
+    // Provider change
+    const providerSelect = $('settings-provider') as HTMLSelectElement;
+    if (providerSelect) {
+      providerSelect.addEventListener('change', () => {
+        const provider = providerSelect.value;
+        toggleApiKeyGroups(provider);
+        populateModelDropdown(provider);
+      });
+    }
+
+    // Gemin API key show/hide toggle
+    $('btn-toggle-api-key')?.addEventListener('click', () => {
+      const input = $('settings-api-key') as HTMLInputElement | null;
+      const showIcon = $('icon-eye-show');
+      const hideIcon = $('icon-eye-hide');
+      if (!input) return;
+
+      if (input.type === 'password') {
+        input.type = 'text';
+        if (showIcon) showIcon.classList.add('hidden');
+        if (hideIcon) hideIcon.classList.remove('hidden');
+      } else {
+        input.type = 'password';
+        if (showIcon) showIcon.classList.remove('hidden');
+        if (hideIcon) hideIcon.classList.add('hidden');
+      }
+    });
+
+    // DeepSeek API key show/hide toggle
+    $('btn-toggle-deepseek-key')?.addEventListener('click', () => {
+      const input = $('settings-deepseek-api-key') as HTMLInputElement | null;
+      const showIcon = $('icon-deepseek-eye-show');
+      const hideIcon = $('icon-deepseek-eye-hide');
+      if (!input) return;
+
+      if (input.type === 'password') {
+        input.type = 'text';
+        if (showIcon) showIcon.classList.add('hidden');
+        if (hideIcon) hideIcon.classList.remove('hidden');
+      } else {
+        input.type = 'password';
+        if (showIcon) showIcon.classList.remove('hidden');
+        if (hideIcon) hideIcon.classList.add('hidden');
+      }
+    });
+
+    // Save settings
+    $('btn-save-settings')?.addEventListener('click', () => {
+      const provider = ($('settings-provider') as HTMLSelectElement)?.value || 'gemini';
+      const geminiKey = ($('settings-api-key') as HTMLInputElement)?.value?.trim() || '';
+      const deepseekKey = ($('settings-deepseek-api-key') as HTMLInputElement)?.value?.trim() || '';
+      const model = ($('settings-model') as HTMLSelectElement)?.value || 'gemini-3-flash-preview';
+      const tone = ($('settings-tone') as HTMLSelectElement)?.value || 'professional';
+      const summaryStyle = ($('settings-summary-style') as HTMLSelectElement)?.value || 'bullets';
+      const language = ($('settings-language') as HTMLSelectElement)?.value || 'English';
+
+      // Validate API key only for the active provider
+      if (provider === 'gemini' && geminiKey && !isValidGeminiApiKeyFormat(geminiKey)) {
+        const keyError = $('api-key-error');
+        if (keyError) {
+          keyError.textContent = 'Invalid Gemini key format. Must start with "AIza" and be 39 characters.';
+          keyError.classList.remove('hidden');
+        }
+        return;
+      }
+      if (provider === 'deepseek' && deepseekKey && !isValidDeepSeekApiKeyFormat(deepseekKey)) {
+        const keyError = $('deepseek-api-key-error');
+        if (keyError) {
+          keyError.textContent = 'Invalid DeepSeek key format. Must start with "sk-".';
+          keyError.classList.remove('hidden');
+        }
+        return;
+      }
+      // Clear errors
+      const geminiKeyError = $('api-key-error');
+      const deepseekKeyError = $('deepseek-api-key-error');
+      if (geminiKeyError) geminiKeyError.classList.add('hidden');
+      if (deepseekKeyError) deepseekKeyError.classList.add('hidden');
+
+      const newSettings: AIComposeSettings = {
+        ...loadSettings(), // Preserve other fields
+        aiProvider: provider as any,
+        geminiApiKey: geminiKey,
+        deepseekApiKey: deepseekKey,
+        defaultModel: model,
+        defaultTone: tone as any,
+        defaultSummaryStyle: summaryStyle as any,
+        defaultLanguage: language,
+      };
+
+      saveSettings(newSettings);
+      applySettingsToForms(newSettings);
+
+      // Show confirmation
+      const msg = $('settings-saved-msg');
+      if (msg) {
+        msg.classList.remove('hidden');
+        setTimeout(() => { msg.classList.add('hidden'); }, 2000);
+      }
+
+      // Flash the save button green
+      const btn = $('btn-save-settings');
+      if (btn) {
+        btn.classList.add('aic-btn--success');
+        setTimeout(() => btn.classList.remove('aic-btn--success'), 1500);
+      }
+    });
+
+    // Test Connection button
+    $('btn-test-connection')?.addEventListener('click', handleTestConnection);
+
+    // Clear All Data button
+    $('btn-clear-all-data')?.addEventListener('click', () => {
+      resetSettings();
+
+      // Reset all form fields to defaults
+      const defaults = loadSettings();
+      applySettingsToForms(defaults);
+
+      // Show confirmation
+      const msg = $('clear-data-msg');
+      if (msg) {
+        msg.classList.remove('hidden');
+        setTimeout(() => { msg.classList.add('hidden'); }, 2500);
+      }
+    });
+
     // --- Rules ---
     $('tab-rules')?.addEventListener('click', () => {
       switchTab('rules');
@@ -1261,147 +1540,6 @@ Office.onReady((info) => {
       }
     });
 
-    // API key show/hide toggle
-    $('btn-toggle-api-key')?.addEventListener('click', () => {
-      const input = $('settings-api-key') as HTMLInputElement | null;
-      const showIcon = $('icon-eye-show');
-      const hideIcon = $('icon-eye-hide');
-      if (!input) return;
-
-      if (input.type === 'password') {
-        input.type = 'text';
-        if (showIcon) showIcon.classList.add('hidden');
-        if (hideIcon) hideIcon.classList.remove('hidden');
-      } else {
-        input.type = 'password';
-        if (showIcon) showIcon.classList.remove('hidden');
-        if (hideIcon) hideIcon.classList.add('hidden');
-      }
-    });
-
-    // Save settings
-    $('btn-save-settings')?.addEventListener('click', () => {
-      const apiKey = ($('settings-api-key') as HTMLInputElement)?.value?.trim() || '';
-      const model = ($('settings-model') as HTMLSelectElement)?.value || 'gemini-3-flash-preview';
-      const tone = ($('settings-tone') as HTMLSelectElement)?.value || 'professional';
-      const summaryStyle = ($('settings-summary-style') as HTMLSelectElement)?.value || 'bullets';
-      const language = ($('settings-language') as HTMLSelectElement)?.value || 'English';
-
-      // Validate API key format
-      const keyError = $('api-key-error');
-      if (apiKey && !isValidApiKeyFormat(apiKey)) {
-        if (keyError) {
-          keyError.textContent = 'Invalid API key format. Keys typically start with "AIza" and are 39 characters long.';
-          keyError.classList.remove('hidden');
-        }
-        return;
-      }
-      if (keyError) keyError.classList.add('hidden');
-
-      const newSettings: AIComposeSettings = {
-        ...loadSettings(),
-        apiKey,
-        defaultModel: model,
-        defaultTone: tone as any,
-        defaultSummaryStyle: summaryStyle as any,
-        defaultLanguage: language,
-      };
-
-      saveSettings(newSettings);
-      applySettingsToForms(newSettings);
-
-      // Show confirmation
-      const msg = $('settings-saved-msg');
-      if (msg) {
-        msg.classList.remove('hidden');
-        setTimeout(() => { msg.classList.add('hidden'); }, 2000);
-      }
-
-      // Flash the save button green
-      const btn = $('btn-save-settings');
-      if (btn) {
-        btn.classList.add('aic-btn--success');
-        setTimeout(() => btn.classList.remove('aic-btn--success'), 1500);
-      }
-    });
-
-    // Test Connection button
-    $('btn-test-connection')?.addEventListener('click', async () => {
-      const apiKey = ($('settings-api-key') as HTMLInputElement)?.value?.trim() || '';
-      const resultEl = $('test-connection-result');
-      const keyError = $('api-key-error');
-      const btn = $('btn-test-connection');
-
-      if (!resultEl) return;
-
-      // Validate format first
-      if (!apiKey) {
-        if (keyError) {
-          keyError.textContent = 'Please enter an API key first.';
-          keyError.classList.remove('hidden');
-        }
-        return;
-      }
-      if (!isValidApiKeyFormat(apiKey)) {
-        if (keyError) {
-          keyError.textContent = 'Invalid API key format. Keys typically start with "AIza" and are 39 characters long.';
-          keyError.classList.remove('hidden');
-        }
-        return;
-      }
-      if (keyError) keyError.classList.add('hidden');
-
-      // Show testing state
-      resultEl.classList.remove('hidden');
-      resultEl.style.color = 'var(--color-aic-text-secondary)';
-      resultEl.textContent = 'Testing connection…';
-      if (btn) btn.setAttribute('disabled', 'true');
-
-      try {
-        initGeminiClient(apiKey);
-        try {
-          await generateText('Say hello in one word.', {
-            maxOutputTokens: 20,
-            temperature: 0.5,
-          });
-        } catch (testErr: any) {
-          // If error is CONTENT_FILTERED, the API key and connection are still valid
-          if (testErr?.code === 'CONTENT_FILTERED') {
-            // Connection works — content filter is a non-issue for a test
-          } else {
-            throw testErr;
-          }
-        }
-        resultEl.style.color = 'var(--color-aic-success)';
-        resultEl.textContent = '✓ Connection successful! API key is valid.';
-        if (btn) {
-          btn.classList.add('aic-btn--success');
-          setTimeout(() => btn.classList.remove('aic-btn--success'), 2000);
-        }
-      } catch (err: any) {
-        resultEl.style.color = 'var(--color-aic-error-text)';
-        resultEl.textContent = `✗ ${err.message || 'Connection failed. Please check your API key.'}`;
-      } finally {
-        if (btn) btn.removeAttribute('disabled');
-      }
-    });
-
-    // Clear All Data button
-    $('btn-clear-all-data')?.addEventListener('click', () => {
-      resetSettings();
-
-      // Reset all form fields to defaults
-      const defaults = loadSettings();
-      applySettingsToForms(defaults);
-
-      // Show confirmation
-      const msg = $('clear-data-msg');
-      if (msg) {
-        msg.classList.remove('hidden');
-        setTimeout(() => { msg.classList.add('hidden'); }, 2500);
-      }
-    });
-
     // --- Scroll to top ---
     const scrollTopBtn = $('btn-scroll-top');
     if (scrollTopBtn) {
@@ -1415,6 +1553,8 @@ Office.onReady((info) => {
     }
 
     // --- Error banner ---
+    $('btn-dismiss-error')?.addEventListener('click', hideError);
+
     // --- Template system ---
     const refreshTemplateDropdowns = (): void => {
       const templates = getTemplates();
@@ -1564,7 +1704,5 @@ Office.onReady((info) => {
         }
       });
     });
-
-    $('btn-dismiss-error')?.addEventListener('click', hideError);
   }
 });

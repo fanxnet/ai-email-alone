@@ -13,6 +13,9 @@ import { initGeminiClient } from "../services/gemini";
 // Types
 // ---------------------------------------------------------------------------
 
+/** AI Provider type */
+export type AIProvider = 'gemini' | 'deepseek';
+
 /** Tone options available across Draft and Reply features. */
 export type Tone = "professional" | "formal" | "friendly" | "casual";
 
@@ -21,8 +24,12 @@ export type SummaryStyle = "bullets" | "paragraph" | "tldr";
 
 /** All persisted user preferences. */
 export interface AIComposeSettings {
-  /** Google Gemini API key (stored in plain text in localStorage). */
-  apiKey: string;
+  /** Current AI provider */
+  aiProvider: AIProvider;
+  /** Google Gemini API key */
+  geminiApiKey: string;
+  /** DeepSeek API key */
+  deepseekApiKey: string;
   /** Gemini model to use for all features. */
   defaultModel: string;
   /** Default tone for Draft Email and Reply. */
@@ -45,8 +52,10 @@ const STORAGE_KEY = "ai_compose_settings";
 const LEGACY_STORAGE_KEY = "glide_settings";
 
 const DEFAULT_SETTINGS: AIComposeSettings = {
-  apiKey: "",
-  defaultModel: "gemini-3-flash-preview",
+  aiProvider: "gemini",
+  geminiApiKey: "",
+  deepseekApiKey: "",
+  defaultModel: "gemini-flash-latest",
   defaultTone: "professional",
   defaultSummaryStyle: "bullets",
   defaultLanguage: "English",
@@ -91,6 +100,13 @@ export function loadSettings(): AIComposeSettings {
 
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<AIComposeSettings>;
+
+      // Backward compatibility: move old apiKey to geminiApiKey
+      if ((parsed as any).apiKey && !parsed.geminiApiKey) {
+        parsed.geminiApiKey = (parsed as any).apiKey;
+      }
+      delete (parsed as any).apiKey;
+
       cached = { ...DEFAULT_SETTINGS, ...parsed };
     } else {
       cached = { ...DEFAULT_SETTINGS };
@@ -107,7 +123,7 @@ export function loadSettings(): AIComposeSettings {
  * If the API key changed, automatically re-initializes the Gemini client.
  */
 export function saveSettings(settings: AIComposeSettings): void {
-  const previousKey = cached?.apiKey || "";
+  const previousKey = cached?.geminiApiKey || "";
 
   cached = { ...settings };
 
@@ -117,10 +133,10 @@ export function saveSettings(settings: AIComposeSettings): void {
     // localStorage might be unavailable in some sandboxed environments
   }
 
-  // Re-initialize Gemini client if the API key changed
-  if (settings.apiKey && settings.apiKey !== previousKey) {
+  // Re-initialize Gemini client if the Gemini API key changed
+  if (settings.geminiApiKey && settings.geminiApiKey !== previousKey) {
     try {
-      initGeminiClient(settings.apiKey);
+      initGeminiClient(settings.geminiApiKey);
     } catch {
       // Will be retried on next action
     }
@@ -129,17 +145,24 @@ export function saveSettings(settings: AIComposeSettings): void {
 
 /**
  * Get the current API key (loads settings if not cached).
+ * Returns the key for the currently selected provider.
  */
 export function getApiKey(): string {
-  return loadSettings().apiKey;
+  const settings = loadSettings();
+  return settings.aiProvider === 'gemini' ? settings.geminiApiKey : settings.deepseekApiKey;
 }
 
 /**
  * Update just the API key (convenience method).
+ * Sets the key for the currently selected provider.
  */
 export function setApiKey(key: string): void {
   const settings = loadSettings();
-  settings.apiKey = key;
+  if (settings.aiProvider === 'gemini') {
+    settings.geminiApiKey = key;
+  } else {
+    settings.deepseekApiKey = key;
+  }
   saveSettings(settings);
 }
 
@@ -163,7 +186,7 @@ export function resetSettings(): void {
 }
 
 // ---------------------------------------------------------------------------
-// Rules helpers
+// Rules helpers (unchanged)
 // ---------------------------------------------------------------------------
 
 /** Human-readable labels for each preset rule. */
@@ -204,7 +227,7 @@ export function buildRulesText(): string {
 }
 
 // ---------------------------------------------------------------------------
-// Goal-oriented email strategies
+// Goal-oriented email strategies (unchanged)
 // ---------------------------------------------------------------------------
 
 /** Strategic prompt instructions for each email goal. */
@@ -239,7 +262,7 @@ export function buildGoalText(goal: string, customGoalText?: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Email Templates
+// Email Templates (unchanged)
 // ---------------------------------------------------------------------------
 
 const TEMPLATES_KEY = 'aic_templates';
@@ -274,4 +297,13 @@ export function saveTemplate(template: Omit<EmailTemplate, 'id'>): EmailTemplate
 export function deleteTemplate(id: string): void {
   const templates = getTemplates().filter((t) => t.id !== id);
   localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
+}
+
+/**
+ * 获取指定 provider 的 API Key
+ */
+export function getProviderApiKey(provider?: AIProvider): string {
+  const settings = loadSettings();
+  const p = provider || settings.aiProvider;
+  return p === 'gemini' ? settings.geminiApiKey : settings.deepseekApiKey;
 }

@@ -1381,12 +1381,20 @@
           Settings
         </h2>
 
-        <!-- API Key -->
+        <!-- AI Provider -->
         <div class="mb-lg">
-          <label
-            class="block text-sm font-medium text-aic-text-secondary mb-xs"
-            for="settings-api-key"
-          >
+          <label class="block text-sm font-medium text-aic-text-secondary mb-xs" for="settings-provider">
+            AI Provider
+          </label>
+          <select id="settings-provider" class="aic-select">
+            <option value="gemini">Gemini (Google)</option>
+            <option value="deepseek">DeepSeek</option>
+          </select>
+        </div>
+
+        <!-- Gemini API Key (shown when provider is gemini) -->
+        <div id="settings-gemini-key-group" class="mb-lg">
+          <label class="block text-sm font-medium text-aic-text-secondary mb-xs" for="settings-api-key">
             Gemini API Key
           </label>
           <div class="flex gap-xs">
@@ -1456,57 +1464,92 @@
               >Google AI Studio</a
             >
           </p>
-          <p
-            id="api-key-error"
-            class="text-xs mt-xs hidden aic-text-error"
-          ></p>
-          <button
-            id="btn-test-connection"
-            class="aic-btn aic-btn--secondary mt-sm w-full"
-            type="button"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-              <polyline points="22 4 12 14.01 9 11.01" />
-            </svg>
-            Test Connection
-          </button>
-          <p id="test-connection-result" class="text-xs mt-xs hidden"></p>
+          <p id="api-key-error" class="text-xs mt-xs hidden aic-text-error"></p>
         </div>
 
-        <!-- Gemini Model -->
+        <!-- DeepSeek API Key (shown when provider is deepseek) -->
+        <div id="settings-deepseek-key-group" class="mb-lg hidden">
+          <label class="block text-sm font-medium text-aic-text-secondary mb-xs" for="settings-deepseek-api-key">
+            DeepSeek API Key
+          </label>
+          <div class="flex gap-xs">
+            <input
+              id="settings-deepseek-api-key"
+              type="password"
+              class="aic-input flex-1"
+              placeholder="Enter your DeepSeek API key"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <button
+              id="btn-toggle-deepseek-key"
+              class="aic-btn aic-btn--secondary aic-btn--icon-toggle"
+              title="Show/hide API key"
+              type="button"
+            >
+              <svg
+                id="icon-deepseek-eye-show"
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"
+                />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+              <svg
+                id="icon-deepseek-eye-hide"
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="hidden"
+              >
+                <path
+                  d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"
+                />
+                <path d="M14.084 14.158a3 3 0 0 1-4.242-4.242" />
+                <path
+                  d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"
+                />
+                <path d="m2 2 20 20" />
+              </svg>
+            </button>
+          </div>
+          <p class="text-xs text-aic-text-tertiary mt-xs">
+            Get your key from
+            <a
+              href="https://platform.deepseek.com/api_keys"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-aic-blue no-underline hover:underline"
+              >DeepSeek Platform</a
+            >
+          </p>
+          <p id="deepseek-api-key-error" class="text-xs mt-xs hidden aic-text-error"></p>
+        </div>
+
+        <!-- Dynamic model select -->
         <div class="mb-lg">
-          <label
-            class="block text-sm font-medium text-aic-text-secondary mb-xs"
-            for="settings-model"
-          >
-            Gemini Model
+          <label class="block text-sm font-medium text-aic-text-secondary mb-xs" for="settings-model">
+            Model
           </label>
           <select id="settings-model" class="aic-select">
-            <optgroup label="Gemini 3.1 (latest)">
-              <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro</option>
-            </optgroup>
-            <optgroup label="Gemini 3">
-              <option value="gemini-3-flash-preview" selected>Gemini 3 Flash</option>
-              <option value="gemini-3-pro-preview">Gemini 3 Pro</option>
-            </optgroup>
-            <optgroup label="Gemini 2.5 (stable)">
-              <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-              <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</option>
-              <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
-            </optgroup>
+            <!-- Options will be populated dynamically -->
           </select>
-          <p class="text-xs text-aic-text-tertiary mt-xs">
+          <p id="settings-model-hint" class="text-xs text-aic-text-tertiary mt-xs">
             Flash models are faster and cheaper. Pro models offer deeper reasoning.
           </p>
         </div>
@@ -1602,6 +1645,30 @@
         >
           ✓ Settings saved
         </div>
+
+        <!-- Test Connection button (works for both providers) -->
+        <button
+          id="btn-test-connection"
+          class="aic-btn aic-btn--secondary mt-lg w-full"
+          type="button"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
+          </svg>
+          Test Connection
+        </button>
+        <p id="test-connection-result" class="text-xs mt-xs hidden"></p>
 
         <!-- Danger zone -->
         <div class="mt-xl pt-lg border-t border-aic-border-light">

@@ -123,6 +123,13 @@ export function initGeminiClient(apiKey: string): GoogleGenAI {
       GeminiErrorCode.INVALID_API_KEY,
     );
   }
+  // 增加格式验证：允许 AIza 或 AQ 开头
+  if (!/^(AIza|AQ)[0-9A-Za-z_-]{35,}$/.test(apiKey.trim())) {
+    throw new GeminiError(
+      'Invalid Gemini API key format. Key must start with "AIza" or "AQ".',
+      GeminiErrorCode.INVALID_API_KEY,
+    );
+  }
   clientInstance = new GoogleGenAI({ apiKey });
   return clientInstance;
 }
