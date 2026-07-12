@@ -23,11 +23,6 @@ export type SummaryStyle = "bullets" | "paragraph" | "tldr";
 export interface AIComposeSettings {
   /** Google Gemini API key (stored in plain text in localStorage). */
   apiKey: string;
-  aiProvider: "gemini" | "deepseek";
-  geminiApiKey: string;
-  deepseekApiKey: string;
-  geminiModel: string;
-  deepseekModel: string;
   /** Gemini model to use for all features. */
   defaultModel: string;
   /** Default tone for Draft Email and Reply. */
@@ -51,12 +46,7 @@ const LEGACY_STORAGE_KEY = "glide_settings";
 
 const DEFAULT_SETTINGS: AIComposeSettings = {
   apiKey: "",
-  aiProvider: "gemini",
-  geminiApiKey: "",
-  deepseekApiKey: "",
-  geminiModel: "gemini-flash-latest",
-  deepseekModel: "deepseek-v4-flash",
-  defaultModel: "gemini-flash-latest",
+  defaultModel: "gemini-3-flash-preview",
   defaultTone: "professional",
   defaultSummaryStyle: "bullets",
   defaultLanguage: "English",
@@ -101,9 +91,6 @@ export function loadSettings(): AIComposeSettings {
 
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<AIComposeSettings>;
-      if (parsed.apiKey && !parsed.geminiApiKey) {
-        parsed.geminiApiKey = parsed.apiKey;
-      }
       cached = { ...DEFAULT_SETTINGS, ...parsed };
     } else {
       cached = { ...DEFAULT_SETTINGS };
@@ -120,7 +107,7 @@ export function loadSettings(): AIComposeSettings {
  * If the API key changed, automatically re-initializes the Gemini client.
  */
 export function saveSettings(settings: AIComposeSettings): void {
-  const previousKey = cached?.geminiApiKey || cached?.apiKey || "";
+  const previousKey = cached?.apiKey || "";
 
   cached = { ...settings };
 
@@ -131,10 +118,9 @@ export function saveSettings(settings: AIComposeSettings): void {
   }
 
   // Re-initialize Gemini client if the API key changed
-  const currentGeminiKey = settings.geminiApiKey || settings.apiKey;
-  if (currentGeminiKey && currentGeminiKey !== previousKey) {
+  if (settings.apiKey && settings.apiKey !== previousKey) {
     try {
-      initGeminiClient(currentGeminiKey);
+      initGeminiClient(settings.apiKey);
     } catch {
       // Will be retried on next action
     }

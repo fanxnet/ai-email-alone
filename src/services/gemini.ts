@@ -84,14 +84,14 @@ export { Type };
 // Constants
 // ---------------------------------------------------------------------------
 
-const FALLBACK_MODEL = 'gemini-flash-latest';
+const FALLBACK_MODEL = 'gemini-3-flash-preview';
 
 /**
  * Fast, non-thinking model for simple extraction/utility tasks
  * (translation, action items, summarization, language detection).
  * These tasks don't benefit from deep reasoning and need low latency.
  */
-export const FAST_MODEL = 'gemini-flash-latest';
+export const FAST_MODEL = 'gemini-3-flash-preview';
 
 const DEFAULT_TEMPERATURE = 1.0;
 const DEFAULT_MAX_OUTPUT_TOKENS = 2048;
@@ -129,15 +129,10 @@ export function initGeminiClient(apiKey: string): GoogleGenAI {
 
 /**
  * Returns the current client instance, or throws if `initGeminiClient`
- * has not been called yet. Supports lazy auto-initialization from settings.
+ * has not been called yet.
  */
 function getClient(): GoogleGenAI {
   if (!clientInstance) {
-    const savedKey = getSetting('geminiApiKey') || getSetting('apiKey');
-    if (savedKey) {
-      clientInstance = new GoogleGenAI({ apiKey: savedKey });
-      return clientInstance;
-    }
     throw new GeminiError(
       'Gemini client not initialised. Call initGeminiClient(apiKey) first.',
       GeminiErrorCode.INVALID_API_KEY,
@@ -163,13 +158,8 @@ export async function generateText(
   prompt: string,
   options: GenerateOptions = {},
 ): Promise<string> {
-  const provider = getSetting('aiProvider') || 'gemini';
-  if (provider === 'deepseek') {
-    return generateDeepSeekText(prompt, options);
-  }
-
   const client = getClient();
-  const modelName = options.model ?? getSetting('geminiModel') ?? getSetting('defaultModel') ?? FALLBACK_MODEL;
+  const modelName = options.model ?? getSetting('defaultModel') ?? FALLBACK_MODEL;
 
   const timeoutMs = calcTimeout(prompt.length, options.timeoutMs);
 
@@ -223,13 +213,8 @@ export async function generateJson<T = Record<string, unknown>>(
   prompt: string,
   options: GenerateJsonOptions = {},
 ): Promise<T> {
-  const provider = getSetting('aiProvider') || 'gemini';
-  if (provider === 'deepseek') {
-    return generateDeepSeekJson<T>(prompt, options);
-  }
-
   const client = getClient();
-  const modelName = options.model ?? getSetting('geminiModel') ?? getSetting('defaultModel') ?? FALLBACK_MODEL;
+  const modelName = options.model ?? getSetting('defaultModel') ?? FALLBACK_MODEL;
 
   const timeoutMs = calcTimeout(prompt.length, options.timeoutMs);
 
@@ -284,156 +269,6 @@ export async function generateJson<T = Record<string, unknown>>(
   };
 
   return retryWithBackoff(callFn);
-}
-
-// ---------------------------------------------------------------------------
-// DeepSeek integration helpers
-// ---------------------------------------------------------------------------
-
-async function generateDeepSeekText(
-  prompt: string,
-  options: GenerateOptions = {},
-): Promise<string> {
-  const apiKey = getSetting('deepseekApiKey');
-  if (!apiKey) {
-    throw new GeminiError(
-      'DeepSeek API key is required. Please set it in Settings.',
-      GeminiErrorCode.INVALID_API_KEY,
-    );
-  }
-
-  let modelName = options.model ?? getSetting('deepseekModel') ?? 'deepseek-v4-flash';
-  if (modelName.startsWith('gemini')) {
-    modelName = getSetting('deepseekModel') ?? 'deepseek-v4-flash';
-  }
-  const temperature = options.temperature ?? 1.0;
-  const maxTokens = options.maxOutputTokens ?? 2048;
-
-  try {
-    const response = await fetch('https://api.deepseek.com/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: modelName,
-        messages: [
-          { role: 'user', content: prompt }
-        ],
-        temperature,
-        max_tokens: maxTokens,
-      }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`DeepSeek API error (${response.status}): ${errText}`);
-    }
-
-    const data = await response.json();
-    const content = data?.choices?.[0]?.message?.content;
-    if (!content) {
-      throw new Error('Empty response from DeepSeek.');
-    }
-    return content;
-  } catch (error: any) {
-    throw new GeminiError(
-      error.message || 'Failed to generate text with DeepSeek.',
-      GeminiErrorCode.UNKNOWN,
-    );
-  }
-}
-
-async function generateDeepSeekJson<T>(
-  prompt: string,
-  options: GenerateJsonOptions = {},
-): Promise<T> {
-  const apiKey = getSetting('deepseekApiKey');
-  if (!apiKey) {
-    throw new GeminiError(
-      'DeepSeek API key is required. Please set it in Settings.',
-      GeminiErrorCode.INVALID_API_KEY,
-    );
-  }
-
-  let modelName = options.model ?? getSetting('deepseekModel') ?? 'deepseek-v4-flash';
-  if (modelName.startsWith('gemini')) {
-    modelName = getSetting('deepseekModel') ?? 'deepseek-v4-flash';
-  }
-  const temperature = options.temperature ?? 0.1;
-  const maxTokens = options.maxOutputTokens ?? 1024;
-
-  const messages: any[] = [];
-  if (options.systemInstruction) {
-    messages.push({ role: 'system', content: options.systemInstruction });
-  }
-  messages.push({ role: 'user', content: prompt });
-
-  try {
-    const response = await fetch('https://api.deepseek.com/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: modelName,
-        messages,
-        temperature,
-        max_tokens: maxTokens,
-        response_format: { type: 'json_object' },
-      }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`DeepSeek API error (${response.status}): ${errText}`);
-    }
-
-    const data = await response.json();
-    const content = data?.choices?.[0]?.message?.content;
-    if (!content) {
-      throw new Error('Empty response from DeepSeek.');
-    }
-
-    return JSON.parse(content) as T;
-  } catch (error: any) {
-    throw new GeminiError(
-      error.message || 'Failed to generate JSON with DeepSeek.',
-      GeminiErrorCode.UNKNOWN,
-    );
-  }
-}
-
-/** Dynamic connection tester for different providers */
-export async function testConnection(provider: string, apiKey: string, model?: string): Promise<void> {
-  if (provider === 'gemini') {
-    const tempClient = new GoogleGenAI({ apiKey });
-    await tempClient.models.generateContent({
-      model: model || 'gemini-1.5-flash',
-      contents: 'Say hello in one word.',
-      config: { maxOutputTokens: 20, temperature: 0.5 },
-    });
-  } else if (provider === 'deepseek') {
-    const response = await fetch('https://api.deepseek.com/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'deepseek-v4-flash',
-        messages: [{ role: 'user', content: 'Say hello in one word.' }],
-        max_tokens: 20,
-        temperature: 0.5,
-      }),
-    });
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`DeepSeek error: ${errText}`);
-    }
-  }
 }
 
 // ---------------------------------------------------------------------------

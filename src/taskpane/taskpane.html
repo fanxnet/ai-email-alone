@@ -1381,24 +1381,9 @@
           Settings
         </h2>
 
-        <!-- AI Provider -->
-        <div class="mb-lg">
-          <label
-            class="block text-sm font-medium text-aic-text-secondary mb-xs"
-            for="settings-provider"
-          >
-            AI Provider
-          </label>
-          <select id="settings-provider" class="aic-select">
-            <option value="gemini" selected>Google Gemini</option>
-            <option value="deepseek">DeepSeek</option>
-          </select>
-        </div>
-
         <!-- API Key -->
         <div class="mb-lg">
           <label
-            id="settings-api-key-label"
             class="block text-sm font-medium text-aic-text-secondary mb-xs"
             for="settings-api-key"
           >
@@ -1502,15 +1487,26 @@
         <!-- Gemini Model -->
         <div class="mb-lg">
           <label
-            id="settings-model-label"
             class="block text-sm font-medium text-aic-text-secondary mb-xs"
             for="settings-model"
           >
             Gemini Model
           </label>
           <select id="settings-model" class="aic-select">
+            <optgroup label="Gemini 3.1 (latest)">
+              <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro</option>
+            </optgroup>
+            <optgroup label="Gemini 3">
+              <option value="gemini-3-flash-preview" selected>Gemini 3 Flash</option>
+              <option value="gemini-3-pro-preview">Gemini 3 Pro</option>
+            </optgroup>
+            <optgroup label="Gemini 2.5 (stable)">
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+              <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</option>
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+            </optgroup>
           </select>
-          <p id="settings-model-hint" class="text-xs text-aic-text-tertiary mt-xs">
+          <p class="text-xs text-aic-text-tertiary mt-xs">
             Flash models are faster and cheaper. Pro models offer deeper reasoning.
           </p>
         </div>

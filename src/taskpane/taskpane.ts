@@ -75,9 +75,9 @@ import {
 
 const $ = (id: string) => document.getElementById(id);
 
-/** Validate API key format (now simply checks for non-empty string). */
+/** Validate Google Gemini API key format (starts with AIza, 39 chars). */
 function isValidApiKeyFormat(key: string): boolean {
-  return key.trim().length > 0;
+  return /^AIza[0-9A-Za-z_-]{35}$/.test(key);
 }
 
 function showElement(id: string): void {
@@ -1014,7 +1014,7 @@ Office.onReady((info) => {
     // Load settings and initialize Gemini client from stored API key
     const settings = loadSettings();
     try {
-      const apiKey = settings.geminiApiKey || settings.apiKey || (window as any).__AICompose_API_KEY__ || '';
+      const apiKey = settings.apiKey || (window as any).__AICompose_API_KEY__ || '';
       if (apiKey) {
         initGeminiClient(apiKey);
       }
@@ -1041,14 +1041,13 @@ Office.onReady((info) => {
       if (langSelect) langSelect.value = s.defaultLanguage;
 
       // Settings form itself
-      const sProvider = $('settings-provider') as HTMLSelectElement | null;
+      const sApiKey = $('settings-api-key') as HTMLInputElement | null;
+      const sModel = $('settings-model') as HTMLSelectElement | null;
       const sTone = $('settings-tone') as HTMLSelectElement | null;
       const sStyle = $('settings-summary-style') as HTMLSelectElement | null;
       const sLang = $('settings-language') as HTMLSelectElement | null;
-      
-      if (sProvider) sProvider.value = s.aiProvider || 'gemini';
-      updateProviderUI(s.aiProvider || 'gemini', s);
-
+      if (sApiKey) sApiKey.value = s.apiKey;
+      if (sModel) sModel.value = s.defaultModel;
       if (sTone) sTone.value = s.defaultTone;
       if (sStyle) sStyle.value = s.defaultSummaryStyle;
       if (sLang) sLang.value = s.defaultLanguage;
@@ -1262,64 +1261,6 @@ Office.onReady((info) => {
       }
     });
 
-    // UI dynamic helper for active provider
-    function updateProviderUI(provider: string, s: AIComposeSettings): void {
-      const label = $('settings-api-key-label');
-      const input = $('settings-api-key') as HTMLInputElement | null;
-      const modelLabel = $('settings-model-label');
-      const modelSelect = $('settings-model') as HTMLSelectElement | null;
-      const modelHint = $('settings-model-hint');
-
-      if (provider === 'gemini') {
-        if (label) label.textContent = 'Gemini API Key';
-        if (input) {
-          input.placeholder = 'Enter your Google Gemini API key';
-          input.value = s.geminiApiKey || s.apiKey || '';
-        }
-        if (modelLabel) modelLabel.textContent = 'Gemini Model';
-        if (modelHint) modelHint.textContent = 'Flash models are faster and cheaper. Pro models offer deeper reasoning.';
-        if (modelSelect) {
-          modelSelect.innerHTML = `
-            <option value="gemini-flash-latest">gemini-flash-latest</option>
-            <option value="gemini-3.5-flash">gemini-3.5-flash</option>
-            <option value="gemini-flash-lite-latest">gemini-flash-lite-latest</option>
-            <option value="gemini-2.5-pro">gemini-2.5-pro</option>
-          `;
-          modelSelect.value = s.geminiModel || s.defaultModel || 'gemini-flash-latest';
-        }
-      } else if (provider === 'deepseek') {
-        if (label) label.textContent = 'DeepSeek API Key';
-        if (input) {
-          input.placeholder = 'Enter your DeepSeek API key';
-          input.value = s.deepseekApiKey || '';
-        }
-        if (modelLabel) modelLabel.textContent = 'DeepSeek Model';
-        if (modelHint) modelHint.textContent = 'DeepSeek models offer outstanding cost-performance for reasoning.';
-        if (modelSelect) {
-          modelSelect.innerHTML = `
-            <option value="deepseek-v4-flash">deepseek-v4-flash</option>
-            <option value="deepseek-v4-pro">deepseek-v4-pro</option>
-          `;
-          modelSelect.value = s.deepseekModel || 'deepseek-v4-flash';
-        }
-      }
-    }
-
-    // Dynamic state switching when provider dropdown changes
-    $('settings-provider')?.addEventListener('change', () => {
-      const provider = ($('settings-provider') as HTMLSelectElement).value;
-      const s = loadSettings();
-      const currentInputVal = ($('settings-api-key') as HTMLInputElement | null)?.value || '';
-      const previousProvider = provider === 'gemini' ? 'deepseek' : 'gemini';
-
-      if (previousProvider === 'gemini') {
-        s.geminiApiKey = currentInputVal;
-      } else {
-        s.deepseekApiKey = currentInputVal;
-      }
-      updateProviderUI(provider, s);
-    });
-
     // API key show/hide toggle
     $('btn-toggle-api-key')?.addEventListener('click', () => {
       const input = $('settings-api-key') as HTMLInputElement | null;
@@ -1340,9 +1281,8 @@ Office.onReady((info) => {
 
     // Save settings
     $('btn-save-settings')?.addEventListener('click', () => {
-      const provider = ($('settings-provider') as HTMLSelectElement)?.value || 'gemini';
       const apiKey = ($('settings-api-key') as HTMLInputElement)?.value?.trim() || '';
-      const model = ($('settings-model') as HTMLSelectElement)?.value || '';
+      const model = ($('settings-model') as HTMLSelectElement)?.value || 'gemini-3-flash-preview';
       const tone = ($('settings-tone') as HTMLSelectElement)?.value || 'professional';
       const summaryStyle = ($('settings-summary-style') as HTMLSelectElement)?.value || 'bullets';
       const language = ($('settings-language') as HTMLSelectElement)?.value || 'English';
@@ -1351,25 +1291,16 @@ Office.onReady((info) => {
       const keyError = $('api-key-error');
       if (apiKey && !isValidApiKeyFormat(apiKey)) {
         if (keyError) {
-          keyError.textContent = 'API key cannot be empty.';
+          keyError.textContent = 'Invalid API key format. Keys typically start with "AIza" and are 39 characters long.';
           keyError.classList.remove('hidden');
         }
         return;
       }
       if (keyError) keyError.classList.add('hidden');
 
-      const currentSettings = loadSettings();
-      if (provider === 'gemini') {
-        currentSettings.geminiApiKey = apiKey;
-        currentSettings.geminiModel = model;
-      } else {
-        currentSettings.deepseekApiKey = apiKey;
-        currentSettings.deepseekModel = model;
-      }
-
       const newSettings: AIComposeSettings = {
-        ...currentSettings,
-        aiProvider: provider as any,
+        ...loadSettings(),
+        apiKey,
         defaultModel: model,
         defaultTone: tone as any,
         defaultSummaryStyle: summaryStyle as any,
@@ -1396,9 +1327,7 @@ Office.onReady((info) => {
 
     // Test Connection button
     $('btn-test-connection')?.addEventListener('click', async () => {
-      const provider = ($('settings-provider') as HTMLSelectElement)?.value || 'gemini';
       const apiKey = ($('settings-api-key') as HTMLInputElement)?.value?.trim() || '';
-      const model = ($('settings-model') as HTMLSelectElement)?.value || '';
       const resultEl = $('test-connection-result');
       const keyError = $('api-key-error');
       const btn = $('btn-test-connection');
@@ -1415,7 +1344,7 @@ Office.onReady((info) => {
       }
       if (!isValidApiKeyFormat(apiKey)) {
         if (keyError) {
-          keyError.textContent = 'API key cannot be empty.';
+          keyError.textContent = 'Invalid API key format. Keys typically start with "AIza" and are 39 characters long.';
           keyError.classList.remove('hidden');
         }
         return;
@@ -1429,9 +1358,20 @@ Office.onReady((info) => {
       if (btn) btn.setAttribute('disabled', 'true');
 
       try {
-        const { testConnection } = await import('../services/gemini');
-        await testConnection(provider, apiKey, model);
-        
+        initGeminiClient(apiKey);
+        try {
+          await generateText('Say hello in one word.', {
+            maxOutputTokens: 20,
+            temperature: 0.5,
+          });
+        } catch (testErr: any) {
+          // If error is CONTENT_FILTERED, the API key and connection are still valid
+          if (testErr?.code === 'CONTENT_FILTERED') {
+            // Connection works — content filter is a non-issue for a test
+          } else {
+            throw testErr;
+          }
+        }
         resultEl.style.color = 'var(--color-aic-success)';
         resultEl.textContent = '✓ Connection successful! API key is valid.';
         if (btn) {
