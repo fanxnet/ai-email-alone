@@ -136,6 +136,7 @@ export async function generateText(prompt: string, options: DeepSeekGenerateOpti
   };
 
   const call = async (): Promise<string> => {
+    console.log('[DeepSeek] Request:', body);
     const response = await fetchWithTimeout(BASE_URL, {
       method: 'POST',
       headers: {
@@ -147,12 +148,14 @@ export async function generateText(prompt: string, options: DeepSeekGenerateOpti
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      console.warn('[DeepSeek] HTTP error:', response.status, errorData);
       throw classifyError(new Error(errorData.error?.message || response.statusText), response.status);
     }
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
     if (!content) {
+      console.warn('[DeepSeek] Empty content. Response data:', data);
       throw new DeepSeekError('Empty response from DeepSeek.', DeepSeekErrorCode.CONTENT_FILTERED);
     }
     return content;
