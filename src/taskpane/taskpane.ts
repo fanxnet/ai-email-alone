@@ -11,7 +11,7 @@
 
 import '../styles/main.css';
 import './taskpane.css';
-import { initGeminiClient, generateText, generateJson, Type } from '../services/gemini';
+import { initGeminiClient, generateText, generateJson, Type, GeminiError } from '../services/gemini';
 import { generateText as deepseekGenerateText, DeepSeekError } from '../services/deepseek';
 import { generateText as aiGenerateText } from '../services/ai-service';
 import { getItemMode } from '../services/outlook';
@@ -1095,8 +1095,8 @@ async function handleTestConnection(): Promise<void> {
     if (btn) btn.classList.add('aic-btn--success');
     setTimeout(() => btn?.classList.remove('aic-btn--success'), 2000);
   } catch (err: any) {
-    // If deepseek returns an empty response while other features work, treat as success
-    if (err instanceof DeepSeekError && err.code === 'CONTENT_FILTERED') {
+    // If gemini/deepseek returns an empty response while other features work, treat as success
+    if ((err instanceof DeepSeekError || err instanceof GeminiError) && err.code === 'CONTENT_FILTERED') {
       resultEl.style.color = 'var(--color-aic-success)';
       resultEl.textContent = '✓ Connection successful! API key is valid.';
       if (btn) btn.classList.add('aic-btn--success');
