@@ -120,6 +120,13 @@ export async function generateText(prompt: string, options: DeepSeekGenerateOpti
   if (!apiKey) {
     throw new DeepSeekError('DeepSeek API key is required.', DeepSeekErrorCode.INVALID_API_KEY);
   }
+  // 放宽格式验证：只验证是否以 "sk-" 开头
+  if (!/^sk-/.test(apiKey)) {
+    throw new DeepSeekError(
+      'Invalid DeepSeek API key format. Key must start with "sk-".',
+      DeepSeekErrorCode.INVALID_API_KEY,
+    );
+  }
 
   const body = {
     model: options.model || DEFAULT_MODEL,
@@ -164,6 +171,13 @@ export async function generateJson<T = Record<string, unknown>>(
   const apiKey = getProviderApiKey('deepseek');
   if (!apiKey) {
     throw new DeepSeekError('DeepSeek API key is required.', DeepSeekErrorCode.INVALID_API_KEY);
+  }
+  // 放宽格式验证：只验证是否以 "sk-" 开头
+  if (!/^sk-/.test(apiKey)) {
+    throw new DeepSeekError(
+      'Invalid DeepSeek API key format. Key must start with "sk-".',
+      DeepSeekErrorCode.INVALID_API_KEY,
+    );
   }
 
   const body: Record<string, unknown> = {
