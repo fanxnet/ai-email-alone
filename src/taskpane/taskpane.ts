@@ -75,19 +75,15 @@ import {
 // ---------------------------------------------------------------------------
 
 const GEMINI_MODELS: { label: string; value: string }[] = [
-  { label: 'Gemini 3.1 Pro Preview', value: 'gemini-3.1-pro-preview' },
-  { label: 'Gemini 3 Flash Preview', value: 'gemini-3-flash-preview' },
-  { label: 'Gemini 3 Pro Preview', value: 'gemini-3-pro-preview' },
-  { label: 'Gemini 2.5 Flash', value: 'gemini-2.5-flash' },
-  { label: 'Gemini 2.5 Flash-Lite', value: 'gemini-2.5-flash-lite' },
+  { label: 'Gemini 3.5 Flash', value: 'gemini-3.5-flash' },
+  { label: 'Gemini Flash Latest', value: 'gemini-flash-latest' },
+  { label: 'Gemini Flash Lite Latest', value: 'gemini-flash-lite-latest' },
   { label: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro' },
 ];
 
 const DEEPSEEK_MODELS: { label: string; value: string }[] = [
   { label: 'DeepSeek V4 Flash', value: 'deepseek-v4-flash' },
   { label: 'DeepSeek V4 Pro', value: 'deepseek-v4-pro' },
-  { label: 'DeepSeek Chat', value: 'deepseek-chat' },
-  { label: 'DeepSeek Reasoner', value: 'deepseek-reasoner' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -1091,7 +1087,7 @@ async function handleTestConnection(): Promise<void> {
       initGeminiClient(apiKey);
       await generateText('Say hello in one word.', { maxOutputTokens: 20, temperature: 0.5 });
     } else {
-      await deepseekGenerateText('Say hello in one word.', { maxTokens: 20, temperature: 0.5 });
+      await deepseekGenerateText('Return exactly the word "test". No other text.', { maxTokens: 10, temperature: 0.5 });
     }
     resultEl.style.color = 'var(--color-aic-success)';
     resultEl.textContent = '✓ Connection successful! API key is valid.';

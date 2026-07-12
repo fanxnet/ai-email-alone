@@ -84,7 +84,7 @@ export { Type };
 // Constants
 // ---------------------------------------------------------------------------
 
-const FALLBACK_MODEL = 'gemini-3-flash-preview';
+const FALLBACK_MODEL = 'gemini-flash-latest';
 
 /**
  * Fast, non-thinking model for simple extraction/utility tasks
