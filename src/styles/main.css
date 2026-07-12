@@ -1,0 +1,112 @@
+/* ================================================================
+   AI Compose — Main Stylesheet (Tailwind CSS v4)
+
+   This file bootstraps Tailwind CSS and defines custom design tokens
+   through the CSS-first @theme directive. All values align with the
+   existing AI Compose design system (--aic-* custom properties).
+
+   © Rizonetech (Pty) Ltd. — https://rizonesoft.com
+   ================================================================ */
+
+@import "tailwindcss/theme";
+@import "tailwindcss/utilities";
+
+/* Box-sizing reset (preflight is skipped to preserve existing styles) */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* ================================================================
+   Custom Design Tokens
+   ================================================================ */
+
+@theme {
+  /* Brand — AI Compose sparkle icon palette */
+  --color-aic-blue: #3b9eff;
+  --color-aic-blue-hover: #2188ed;
+  --color-aic-blue-light: #e8f3ff;
+  --color-aic-blue-glow: rgba(59, 158, 255, 0.15);
+  --color-aic-purple: #7b61db;
+  --color-aic-purple-hover: #6b51c8;
+  --color-aic-green: #22c55e;
+  --color-aic-amber: #f59e0b;
+  --color-aic-teal: #14b8a6;
+
+  /* Surfaces */
+  --color-aic-bg: #ffffff;
+  --color-aic-bg-panel: #f8f9fb;
+  --color-aic-bg-elevated: #ffffff;
+
+  /* Borders */
+  --color-aic-border: #e2e5ea;
+  --color-aic-border-light: #eef0f3;
+  --color-aic-border-focus: #3b9eff;
+
+  /* Text */
+  --color-aic-text: #1a1d23;
+  --color-aic-text-secondary: #5e6470;
+  --color-aic-text-tertiary: #8e95a2;
+  --color-aic-text-inverse: #ffffff;
+
+  /* Status */
+  --color-aic-error-bg: #fff1f0;
+  --color-aic-error-text: #d1242f;
+  --color-aic-error-border: #ffd2cf;
+  --color-aic-success: #1a7f37;
+
+  /* Spacing (4px grid) */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 22px;
+  --spacing-xl: 24px;
+
+  /* Border radius */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+
+  /* Typography */
+  --font-aic: "Poppins", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 13px;
+  --text-lg: 15px;
+  --text-xl: 16px;
+
+  /* Motion */
+  --ease-aic: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --duration-aic: 150ms;
+
+  /* Dark theme surfaces (used via .dark variant) */
+  --color-dark-bg: #1e1e1e;
+  --color-dark-bg-panel: #252526;
+  --color-dark-bg-elevated: #2d2d2d;
+  --color-dark-border: #3e3e42;
+  --color-dark-border-light: #333337;
+  --color-dark-text: #e0e0e0;
+  --color-dark-text-secondary: #a0a0a0;
+  --color-dark-text-tertiary: #8a8a8a;
+  --color-dark-error-bg: #3a1a1a;
+  --color-dark-error-border: #5c2626;
+}
+
+/* ================================================================
+   Dark theme — activated by adding `data-theme="dark"` to <html>
+   or via Outlook's theme detection in taskpane.ts
+   ================================================================ */
+
+[data-theme="dark"] {
+  --color-aic-bg: var(--color-dark-bg);
+  --color-aic-bg-panel: var(--color-dark-bg-panel);
+  --color-aic-bg-elevated: var(--color-dark-bg-elevated);
+  --color-aic-border: var(--color-dark-border);
+  --color-aic-border-light: var(--color-dark-border-light);
+  --color-aic-text: var(--color-dark-text);
+  --color-aic-text-secondary: var(--color-dark-text-secondary);
+  --color-aic-text-tertiary: var(--color-dark-text-tertiary);
+  --color-aic-error-bg: var(--color-dark-error-bg);
+  --color-aic-error-border: var(--color-dark-error-border);
+}

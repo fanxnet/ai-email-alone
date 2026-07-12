@@ -1,0 +1,86 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      deploy_prod:
+        description: "Deploy to production (root)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: ./dist
+
+  deploy-dev:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: ./dist
+
+      - name: Patch manifest for dev environment
+        run: |
+          sed -i \
+            -e 's|https://fanxnet.github.io/ai-email-alone/|https://fanxnet.github.io/ai-email-alone/dev/|g' \
+            -e 's|98af728e-46d1-4390-9696-06a7ca4f5738|db42d064-6dfd-428f-a689-97ddf2d746d3|' \
+            -e 's|DefaultValue="AI Compose"|DefaultValue="AI Compose (Dev)"|g' \
+            -e 's|Open the AI Compose assistant panel.|Open the AI Compose assistant panel (development build).|' \
+            dist/manifest.xml
+
+      - name: Deploy to gh-pages /dev
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          destination_dir: dev
+          keep_files: true
+
+  deploy-prod:
+    needs: build
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_prod == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: ./dist
+
+      - name: Deploy to gh-pages root
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          destination_dir: .
+          keep_files: false
+          exclude_assets: "dev/**"
