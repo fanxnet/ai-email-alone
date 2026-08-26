@@ -5,7 +5,7 @@
   <ProviderName>Fanxnet</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="AI Compose (Dev)"/>
-  <Description DefaultValue="AI-powered email writer and composer for Outlook, powered by Gemini."/>
+  <Description DefaultValue="AI-powered email writer and composer for Outlook, powered by Gemini+Deepseek."/>
   <IconUrl DefaultValue="https://fanxnet.github.io/ai-email-alone/dev/assets/icon-64.png"/>
   <HighResolutionIconUrl DefaultValue="https://fanxnet.github.io/ai-email-alone/dev/assets/icon-128.png"/>
   <SupportUrl DefaultValue="https://fanxnet.github.io/support"/>
