@@ -77,64 +77,99 @@ export function getItemMode(): ItemMode {
 // ---------------------------------------------------------------------------
 // Email body
 // ---------------------------------------------------------------------------
-
 /**
  * Strip HTML tags from email content, preserving only the display text of
  * hyperlinks (discarding href targets) and paragraph line breaks.
  * This ensures the AI prompt receives human-readable, well-structured text.
+ * 
+ * @param html - HTML string of the email body
+ * @param options.stripQuoted - Whether to remove quoted/replied content (default: false)
  */
-export function emailHtmlToText(
+
+export function emailHtmlToText (
   html: string,
-  options: { stripQuoted?: boolean } = {},
+  options: {
+    stripQuoted?: boolean;
+    fixSplitMailHeaders?: boolean;
+  } = {},
 ): string {
-  let text = html;
-  // Remove quoted/replied content containers (thread history)
-  // Note: msonormal NOT filtered — Outlook Classic uses it for ALL content
-  if (options.stripQuoted !== false) {
-    text = text
-      .replace(/<blockquote[\s\S]*?<\/blockquote>/gi, '')
-      .replace(/<div\s+class="gmail_quote"[\s\S]*?<\/div>/gi, '')
-      .replace(/<div\s+id="gmail_quote"[\s\S]*?<\/div>/gi, '')
-      .replace(/<div\s+class="yahoo_quoted"[\s\S]*?<\/div>/gi, '');
+  const { stripQuoted = false, fixSplitMailHeaders = true } = options;
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+
+  // 递归删除HTML注释
+  const removeComments = (root: Node) => {
+    const nodes = Array.from(root.childNodes);
+    for (const node of nodes) {
+      if (node.nodeType === Node.COMMENT_NODE) {
+        node.remove();
+      } else if (node.hasChildNodes()) {
+        removeComments(node);
+      }
+    }
+  };
+  removeComments(doc.body);
+
+  // 移除脚本、样式，不属于邮件正文
+  doc.querySelectorAll('style,script,noscript').forEach(el => el.remove());
+
+  // 仅开启stripQuoted时才删除引用；默认所有历史邮件完整保留
+  if (stripQuoted) {
+    const quoteSelectors = [
+      'blockquote',
+      'div.gmail_quote',
+      'div[id="gmail_quote"]',
+      'div.yahoo_quoted',
+      '.mail_quote',
+      '.outlookQuote',
+      '.replyQuote',
+      'div.quote'
+    ];
+    quoteSelectors.forEach(sel => {
+      doc.querySelectorAll(sel).forEach(el => el.remove());
+    });
   }
-  return text
-    // Remove existing logic
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-    // <a> tags → keep display text only, drop href
-    .replace(/<a[^>]*>([\s\S]*?)<\/a>/gi, '$1')
-    // Block-level elements → newlines
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<hr\s*\/?>/gi, '\n')
-    .replace(/<\/(p|div|li|tr|h[1-6])>/gi, '\n')
-    // Strip remaining tags
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    // Decode common Latin accented entities (localized quoted headers)
-    .replace(/&eacute;/g, 'é').replace(/&Eacute;/g, 'É')
-    .replace(/&egrave;/g, 'è').replace(/&Egrave;/g, 'È')
-    .replace(/&agrave;/g, 'à').replace(/&Agrave;/g, 'À')
-    .replace(/&auml;/g, 'ä').replace(/&Auml;/g, 'Ä')
-    .replace(/&uuml;/g, 'ü').replace(/&Uuml;/g, 'Ü')
-    .replace(/&ouml;/g, 'ö').replace(/&Ouml;/g, 'Ö')
-    .replace(/&iacute;/g, 'í').replace(/&Iacute;/g, 'Í')
-    .replace(/&oacute;/g, 'ó').replace(/&Oacute;/g, 'Ó')
-    .replace(/&uacute;/g, 'ú').replace(/&Uacute;/g, 'Ú')
-    .replace(/&ccedil;/g, 'ç').replace(/&Ccedil;/g, 'Ç')
-    .replace(/&ntilde;/g, 'ñ').replace(/&Ntilde;/g, 'Ñ')
-    // Collapse multiple spaces within a line
-    .replace(/ +/g, ' ')
-    // Trim whitespace around newlines
-    .replace(/ *\n */g, '\n')
-    // Collapse 3+ consecutive newlines into 2 (single blank line)
+
+  // 列表项添加项目符号
+  doc.querySelectorAll('li').forEach(li => {
+    if (!li.textContent?.startsWith('• ')) {
+      const textNode = doc.createTextNode('• ');
+      li.insertBefore(textNode, li.firstChild);
+    }
+  });
+
+  // innerText还原布局换行，表格、复杂邮件布局不会丢内容
+  let text = doc.body.innerText;
+
+  // 强制清理Emoji表情包（永久生效）
+  const emojiRegex = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{200D}]/gu;
+  text = text.replace(emojiRegex, '');
+
+  // 清除Outlook零宽隐形字符，解决换行错乱
+  const zeroWidthChars = /[\u2000-\u200F\u2028-\u202F]/g;
+  text = text.replace(zeroWidthChars, ' ');
+
+  // 规整多余空格和空行
+  text = text
+    .replace(/[ \t]+/g, ' ')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+
+  // --------------------新增：合并跨行断裂邮件头--------------------
+  if(fixSplitMailHeaders){
+    const starters = ['From:','De:','Von:','发件人：','Sender:','Expéditeur :','Remitente:','Remetente:'];
+    const escapeRegExp = (s:string)=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    // 匹配：孤立标记行 + 换行，且下一行包含邮箱尖括号 <
+    const rx = new RegExp(
+        `^[\\s\\u00A0]*(${starters.map(escapeRegExp).join('|')})\\s*\\r?\\n(?=.*<)`,
+        'gim'
+    );
+    text = text.replace(rx, '$1 ');
+  }
+
+  return text;
 }
+
 
 /**
  * Read the body of the currently open email as plain text.

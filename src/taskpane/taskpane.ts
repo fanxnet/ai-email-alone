@@ -33,7 +33,6 @@ import {
   loadEmailContext,
   clearEmailContext,
   restoreFromHistory,
-  filterQuotedContent,
   DraftReplyOptions,
 } from '../features/draft-reply';
 import {
@@ -902,10 +901,11 @@ async function handleSuggestReplies(): Promise<void> {
   const writer = streamInto('reply-suggestions');
 
   try {
-    const { getEmailContext } = await import('../features/draft-reply');
+    const { getEmailContext, buildThreadBodyText, MIN_KEEP_REPLIES } = await import('../features/draft-reply');
     const context = await getEmailContext();
 
-    const emailSummary = `From: ${context.sender.name} <${context.sender.email}>\nSubject: ${context.subject}\n\n${filterQuotedContent(context.body)}`.slice(0, 2000);
+    const body = buildThreadBodyText(context.bodyHtml ?? '', MIN_KEEP_REPLIES);
+    const emailSummary = `From: ${context.sender.name} <${context.sender.email}>\nSubject: ${context.subject}\n\n${body}`.slice(0, 2000);
 
     const isDouble = ($('reply-double') as HTMLInputElement)?.checked;
     const wordRange = isDouble ? '10-24' : '5-12';
@@ -1489,6 +1489,9 @@ Office.onReady((info) => {
       // Conversation context toggle (Reply toolbar)
       const ctxToggle = $('conversation-context-toggle') as HTMLInputElement | null;
       if (ctxToggle) ctxToggle.checked = s.conversationContextEnabled;
+      // Reply Thread toggle (Reply toolbar) — persisted across sessions
+      const threadToggle = $('reply-include-thread') as HTMLInputElement | null;
+      if (threadToggle) threadToggle.checked = s.includeThread;
       applyConversationFeatureVisibility();
     };
 
@@ -1763,6 +1766,13 @@ Office.onReady((info) => {
       settings.conversationContextEnabled = enabled;
       saveSettings(settings);
       applyConversationFeatureVisibility();
+    });
+
+    // "Thread" toggle (Reply toolbar) — persists the choice across sessions
+    $('reply-include-thread')?.addEventListener('change', (e: Event) => {
+      const settings = loadSettings();
+      settings.includeThread = (e.target as HTMLInputElement).checked;
+      saveSettings(settings);
     });
 
     // --- Summarize ---

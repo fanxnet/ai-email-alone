@@ -50,12 +50,14 @@ Role:As a professional email assistant,{{PROFILE}}
 Tone: {{TONE}}
 Language：{{LANGUAGE}}
 Address the reply to: {{REPLY_TO_NAME}} 
-Write only the reply body (without subject,regards and signature).
-Reference relevant points from the original email naturally.
-Keep the reply focused and professional,no commentary outside the reply.
+- Write only the reply body (without subject,regards and signature).
+- Reference relevant points from the original email naturally.
+- Keep the reply focused and professional,no commentary outside the reply.
 {{RULES}}
 
 [2.Original Email]
+
+--MAIL SPLIT MARKER-- the lastest
 {{ORIGINAL_EMAIL}}
 
 [3.Reply Instructions(strictly)]
@@ -101,6 +103,7 @@ Requirements:
 export const IMPROVE_WRITING_PROMPT = `You are a professional writing assistant.
 
 Improve the following text:
+
 ---
 {{TEXT}}
 ---
@@ -126,6 +129,7 @@ Requirements:
 export const EXTRACT_ACTION_ITEMS_PROMPT = `You are a professional email assistant.
 
 Extract all action items, tasks, and deadlines from the following email:
+
 ---
 {{EMAIL_CONTENT}}
 ---
@@ -152,6 +156,7 @@ Requirements:
 export const TRANSLATE_PROMPT = `You are a professional translator.
 
 Translate the following text to {{TARGET_LANGUAGE}}:
+
 ---
 {{TEXT}}
 ---
@@ -180,6 +185,7 @@ Requirements:
 export const CHANGE_TONE_PROMPT = `You are a professional writing assistant.
 
 Rewrite the following text in a {{TARGET_TONE}} tone:
+
 ---
 {{TEXT}}
 ---
