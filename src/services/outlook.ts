@@ -138,15 +138,41 @@ export function emailHtmlToText (
     }
   });
 
-  // innerText还原布局换行，表格、复杂邮件布局不会丢内容
-  let text = doc.body.innerText;
+  // ---------------------- 纯DOM递归遍历，替代innerText ----------------------
+  const BLOCK_TAGS = new Set([
+    'DIV','P','BLOCKQUOTE','LI','H1','H2','H3','H4','H5','H6','TR'
+  ]);
+
+  let text = '';
+  function walk(node: Node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      text += node.textContent;
+      return;
+    }
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const el = node as HTMLElement;
+      const tag = el.tagName;
+      if (tag === 'BR') {
+        text += '\n';
+        return;
+      }
+      for (const child of Array.from(node.childNodes)) {
+        walk(child);
+      }
+      if (BLOCK_TAGS.has(tag)) {
+        text += '\n';
+      }
+    }
+  }
+  walk(doc.body);
 
   // 强制清理Emoji表情包（永久生效）
   const emojiRegex = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{200D}]/gu;
   text = text.replace(emojiRegex, '');
 
-  // 清除Outlook零宽隐形字符，解决换行错乱
-  const zeroWidthChars = /[\u2000-\u200F\u2028-\u202F]/g;
+  // ===== 统一清洗特殊空白、隐形字符 =====
+  // Outlook零宽隐形字符，解决换行错乱,不间断空格 &nbsp;
+  const zeroWidthChars = /[\u2000-\u200F\u2028-\u202F\u00A0]/g;
   text = text.replace(zeroWidthChars, ' ');
 
   // 规整多余空格和空行
@@ -155,7 +181,7 @@ export function emailHtmlToText (
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 
-  // --------------------新增：合并跨行断裂邮件头--------------------
+  // --------------------合并跨行断裂邮件头 + 线程换行修复--------------------
   if(fixSplitMailHeaders){
     const starters = ['From:','De:','Von:','发件人：','Sender:','Expéditeur :','Remitente:','Remetente:'];
     const escapeRegExp = (s:string)=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
@@ -165,11 +191,20 @@ export function emailHtmlToText (
         'gim'
     );
     text = text.replace(rx, '$1 ');
+
+    // 多语种Outlook回复分界标记前强制补换行
+    const quoteMarkerRx = /(\s)(escribió:|wrote:|schrieb:|a écrit:)/gi;
+    text = text.replace(quoteMarkerRx, '\n\n$2');
+
+    // From标记前面缺少换行，补上换行，防止邮件块粘连
+    text = text.replace(/([^\n])(From:|发件人：|发件人:|Von:|De:)/gi,'$1\n\n$2');
+
+    // 头部字段粘连修复 Date / Subject / To
+    text = text.replace(/([^\n\s])(Date:|Subject:|To:|Sent:|主题：|主题:|发送时间：)/gi,'$1\n$2');
   }
 
   return text;
 }
-
 
 /**
  * Read the body of the currently open email as plain text.

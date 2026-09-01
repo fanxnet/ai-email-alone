@@ -1,6 +1,3 @@
-function escapeRegExp(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 const THREAD_BLOCK_STARTERS = [
     'From:',
     'Von:',
@@ -26,24 +23,31 @@ const HEADER_REMOVE_LIST = [
     'Тема:', 'Кому:', 'Копия:', 'Отправлено:', 'Дата:',
     '件名：', '宛先：', 'Cc：', '送信日時：', '日付：',
     '제목:', '받는 사람:', '참조:', '보낸 시간:', '날짜:',
-    '主题：', '主题:', '收件人：', '收件人:', '抄送：', '抄送:', '发送时间：', '发送时间:', '日期：', '日期:'
+    '主题：', '主题:', '收件人：', '收件人:', '抄送：', '抄送:', '发送时间：', '发送时间:', '日期：', '日期:',
+    'Enviada em:'
 ];
 const SIGNATURE_TRIGGERS = [
+    'Best regards',
+    'Kind regards',
     'Regards',
+    'Best Wishes',
+    'Wishes',
     'Thanks',
     'Thank you',
     'Sincerely',
-    'Wishes',
     'Mit freundlichen Grüßen',
+    'Saludos',
+    'Saludos cordiales',
+    'Atentamente',
+    'Atenciosamente',
+    'atencionalmente',
+    'Salutos',
     'Viele Grüße',
     'Liebe Grüße',
     'Cordialement',
     'Bien à vous',
     'Merci',
-    'Saludos',
-    'Atentamente',
     'Muchas gracias',
-    'Atenciosamente',
     'Saudações',
     'Obrigado',
     'Cordiali saluti',
@@ -57,11 +61,18 @@ const SIGNATURE_TRIGGERS = [
     '祝好',
     '此致',
     '敬礼',
-    '祝工作顺利',
-    '祝万事如意'
+    'Tks',
+    'Tks and B. Rgds',
+    'Tks & B rgds',
+    'Tks n rgds',
+    'BRgds',
 ];
+
 const SIGNATURE_NAMES = [
-    'Angelina Liu'
+    'Angelina Liu',
+    'Excited to work on this',
+    'Thank you so much',
+    'Thank you very much',
 ];
 
 const starterKeywords = THREAD_BLOCK_STARTERS.map(s=>escapeRegExp(s)).join('|');
@@ -86,40 +97,72 @@ function isExtraHeaderLine(line: string): boolean {
     return extraHeaderRegex.test(line);
 }
 
+function escapeRegExp(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// 不排序；/i 负责忽略大小写匹配
+const salutePattern = SIGNATURE_TRIGGERS
+    .map(escapeRegExp)
+    .join('|');
+/*// 长词优先排序，防止短词抢先匹配长词组
+const salutePattern = [...SIGNATURE_TRIGGERS]
+    .sort((a, b) => b.length - a.length)
+    .map(escapeRegExp)
+    .join('|');
+*/
+
+// 关键修复：移除末尾 $ 行尾锚点！
+// 只要存在一对 关键词 / 关键词，后面还可以有更多链式内容
+const multiSaluteRx = new RegExp(
+    `(${salutePattern})\\s*(?:\\/|&)\\s*(${salutePattern})\\s*[,.!~;]*`,
+    'i'
+);
+
 function lineTriggerSignature(line: string): boolean {
     if (!line) return false;
     const trimmed = line.trim();
     if (trimmed.length === 0) return false;
-    const MAX_SIGNATURE_LINE = 30;
+
+    const MAX_SIGNATURE_LINE = 80;
     if (trimmed.length > MAX_SIGNATURE_LINE) return false;
     if (trimmed.includes('?')) return false;
 
     const lowerLine = trimmed.toLowerCase();
     if (lowerLine.startsWith('dear ')) return false;
 
-    const MAX_PREFIX = 5;
-    const MAX_TAIL_CHARS = 12;
+    const MAX_PREFIX = 2;
+    const MAX_TAIL_CHARS = 8;
 
+    // 1.普通单行问候关键词检测
     for (const keyword of SIGNATURE_TRIGGERS) {
         const kw = keyword.toLowerCase();
         const pos = lowerLine.indexOf(kw);
         if (pos === -1) continue;
-        if(pos > MAX_PREFIX) continue;
+        if (pos > MAX_PREFIX) continue;
         const kwEnd = pos + kw.length;
         const tailLength = trimmed.length - kwEnd;
         if (tailLength <= MAX_TAIL_CHARS) {
             return true;
         }
     }
+
+    // 2.复合链式签名：2个关键词由 / 或 & 隔开即命中
+    if (multiSaluteRx.test(lowerLine)) {
+        return true;
+    }
+
+    // 3.人名签名：严格行首匹配
     for (const name of SIGNATURE_NAMES) {
         const nameLower = name.toLowerCase();
         if (lowerLine.startsWith(nameLower)) {
             const tailLength = trimmed.length - nameLower.length;
-            if (tailLength <= MAX_TAIL_CHARS) {
+            if (tailLength <= 6) {
                 return true;
             }
         }
     }
+
     return false;
 }
 
@@ -235,7 +278,6 @@ export function buildThreadBodyText(bodytext: string, keepReplies: number): stri
 }
 
 function compressBlankLines(text: string): string {
-    text = text.replace(/\u00A0/g, ' ');
     return text.replace(/(\r?\n)(\s*\1)+/g, '$1$1');
 }
 

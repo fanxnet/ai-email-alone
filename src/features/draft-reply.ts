@@ -126,8 +126,8 @@ export async function generateReply(
   const sessionKey = getSessionKey();
 
   // Build the original email string for the prompt (pre-truncated for safety)
-  let originalEmail = `From: ${context.sender.name} <${context.sender.email}>\n`;
-  originalEmail += `Subject: ${context.subject}\n\n`;
+  let originalEmail = `Subject: ${context.subject}\n\n`;
+  originalEmail += `--MAIL SPLIT MARKER-- the lastest\nFrom: ${context.sender.name} <${context.sender.email}>\n\n`;
 
   // Resolve the body to include based on the Thread toggle:
   // - Thread off (default): keep the current email plus the newest 2 replies.
@@ -135,11 +135,12 @@ export async function generateReply(
   // Both are truncated on the HTML structure, then cleaned message-by-message.
   const KEEP_REPLIES = options.includeThread ? MAX_KEEP_REPLIES : MIN_KEEP_REPLIES;
   let emailBody: string;
-  if (/buildThreadBodyText-test/i.test(options.instructions)) {
-  emailBody = buildThreadBodyText(context.body ?? '', KEEP_REPLIES);
+  if (/cleanThreadEmails-2x/i.test(options.instructions)) {
+  emailBody = cleanThreadEmails(buildThreadBodyText(context.body ?? '', 2*KEEP_REPLIES),true);
   } 
-  else if (/emailHtmlToText-test/i.test(options.instructions)) { 
-  emailBody = context.body ?? '' ;
+  else if (/buildThreadBodyText-2x/i.test(options.instructions)) { 
+  //for test
+  emailBody = context.body ?? '';
   }
   else { 
   emailBody = cleanThreadEmails(buildThreadBodyText(context.body ?? '', KEEP_REPLIES),true);
@@ -150,7 +151,7 @@ export async function generateReply(
   // Resolve language: 'auto' means match the original email's language
   let language: string;
   if (!options.language || options.language === 'auto') {
-  language = 'the same language as the original email';
+  language = 'the same language as the latest original email';
   } else {
   language = options.language;
   }
