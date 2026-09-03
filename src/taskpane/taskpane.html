@@ -274,7 +274,9 @@
         <div class="mb-lg">
           <label class="block text-sm font-medium text-aic-text-secondary mb-xs" for="draft-goal">Goal <span class="text-aic-text-tertiary font-normal">(optional)</span></label>
           <select id="draft-goal" class="aic-select">
-            <option value="none" selected>General purpose</option>
+            <option value="none">General purpose</option>
+            <option value="project-cargo" selected>Project cargo</option>
+            <option value="business-development">Business development</option>
             <option value="close-deal">Close a deal</option>
             <option value="get-approval">Get a quote / proposal approved</option>
             <option value="schedule-meeting">Schedule a meeting</option>
@@ -540,7 +542,9 @@
         <div class="mb-lg">
           <label class="block text-sm font-medium text-aic-text-secondary mb-xs" for="reply-goal">Goal <span class="text-aic-text-tertiary font-normal">(optional)</span></label>
           <select id="reply-goal" class="aic-select">
-            <option value="none" selected>General purpose</option>
+            <option value="none">General purpose</option>
+            <option value="project-cargo" selected>Project cargo</option>
+            <option value="business-development">Business development</option>
             <option value="close-deal">Close a deal</option>
             <option value="get-approval">Get a quote / proposal approved</option>
             <option value="schedule-meeting">Schedule a meeting</option>
@@ -1370,7 +1374,7 @@
         </h2>
 
         <p class="text-sm text-aic-text-secondary mb-lg">
-          These rules are applied when drafting and replying to emails.
+          These rules are applied when drafting and replying to emails,don't select the conflicting item at the same time.
         </p>
 
         <!-- Preset rules -->
@@ -1378,28 +1382,28 @@
           <label class="block text-sm font-medium text-aic-text-secondary mb-sm">Preset Rules</label>
 
           <label class="flex items-start gap-sm mb-sm cursor-pointer">
-            <input type="checkbox" id="rule-noPlaceholders" class="mt-[2px] accent-aic-purple" checked />
-            <span class="text-sm text-aic-text">Don't use placeholder tokens like [Your Name] or [Company] — use real names or omit</span>
+            <input type="checkbox" id="rule-useTerminology" class="mt-[2px] accent-aic-purple" checked />
+            <span class="text-sm text-aic-text">Use accurate, standard professional terminology for the relevant industry</span>
           </label>
 
           <label class="flex items-start gap-sm mb-sm cursor-pointer">
-            <input type="checkbox" id="rule-noSignature" class="mt-[2px] accent-aic-purple" checked />
-            <span class="text-sm text-aic-text">Don't add a sign-off or signature — let the email client handle it</span>
+            <input type="checkbox" id="rule-useSimpleLanguage" class="mt-[2px] accent-aic-purple" checked />
+            <span class="text-sm text-aic-text">Use plain,simple and easy-to-understand language.</span>
+          </label>
+          
+          <label class="flex items-start gap-sm mb-sm cursor-pointer">
+            <input type="checkbox" id="rule-keepDetail" class="mt-[2px] accent-aic-purple" checked />
+            <span class="text-sm text-aic-text">Keep the output detailed and focused.</span>
+          </label>
+          
+          <label class="flex items-start gap-sm mb-sm cursor-pointer">
+            <input type="checkbox" id="rule-keepConcise" class="mt-[2px] accent-aic-purple" />
+            <span class="text-sm text-aic-text">Keep the output concise and straight to the point.</span>
           </label>
 
           <label class="flex items-start gap-sm mb-sm cursor-pointer">
-            <input type="checkbox" id="rule-noSubjectLine" class="mt-[2px] accent-aic-purple" />
-            <span class="text-sm text-aic-text">Don't include a subject line in the output</span>
-          </label>
-
-          <label class="flex items-start gap-sm mb-sm cursor-pointer">
-            <input type="checkbox" id="rule-keepShort" class="mt-[2px] accent-aic-purple" />
-            <span class="text-sm text-aic-text">Keep output concise — no more than 5 sentences</span>
-          </label>
-
-          <label class="flex items-start gap-sm mb-sm cursor-pointer">
-            <input type="checkbox" id="rule-useSimpleLanguage" class="mt-[2px] accent-aic-purple" />
-            <span class="text-sm text-aic-text">Use simple, easy-to-understand language</span>
+            <input type="checkbox" id="rule-translateToMail" class="mt-[2px] accent-aic-purple" />
+            <span class="text-sm text-aic-text">Translate the reply/draft instructions as the output.</span>
           </label>
         </div>
 

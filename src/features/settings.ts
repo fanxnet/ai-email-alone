@@ -116,11 +116,11 @@ const DEFAULT_SETTINGS: AIComposeSettings = {
   replyLanguage: "auto",
   draftLanguage: "English",
   presetRules: {
-    noPlaceholders: true,
-    noSignature: true,
-    noSubjectLine: false,
-    keepShort: false,
-    useSimpleLanguage: false,
+    useTerminology: true,
+    useSimpleLanguage: true,
+    keepDetail: true,
+    keepConcise: false,
+    translateToMail: false,
   },
   customRules: "",
   activeCareerId: "",
@@ -250,16 +250,16 @@ export function resetSettings(): void {
 
 /** Human-readable labels for each preset rule. */
 const PRESET_RULE_LABELS: Record<string, string> = {
-  noPlaceholders:
-    'Do not include placeholder like [Your Name], [Company], or [Recipient]',
-  noSignature:
-    'Do not add a sign-off or signature (e.g. "Regards", "Sincerely")',
-  noSubjectLine:
-    "Do not include a subject line in the output",
-  keepShort:
-    "Keep the output concise — no more than 5 sentences",
+  useTerminology:
+    'Use accurate, standard professional terminology for the relevant industry.',
   useSimpleLanguage:
-    "Use simple, easy-to-understand language (avoid jargon)",
+    'Use plain,simple and easy-to-understand language,Avoid complex vocabulary and overly long sentences.',
+  keepDetail:
+    'Keep the output detailed and focused. Cover all key information points and stay strictly on topic.',
+  keepConcise:
+    'Keep the output concise and straight to the point. Respond directly to the core request without redundant wording.',
+  translateToMail:
+    'Translate the content instructions as the ouput. Minor wording revisions and polishing are acceptable.',
 };
 
 export { PRESET_RULE_LABELS };
@@ -304,6 +304,14 @@ export const GOAL_PROMPTS: Record<string, string> = {
     'Write with the strategic goal of REQUESTING A FAVOR OR INTRODUCTION. Be respectful of the recipient\'s time, clearly explain the mutual benefit, make it easy to say yes by providing context they can forward, and express genuine appreciation.',
   'resolve-complaint':
     'Write with the strategic goal of RESOLVING A COMPLAINT. Acknowledge the issue with empathy, take ownership where appropriate, propose a concrete resolution, and aim to turn a negative experience into a positive one.',
+  'business-development':
+    'Write as a trusted commercial partner: proactively solve the client\'s problems with clear options, fully disclose costs and risks, and guide the conversation toward a quick commercial decision that benefits both sides.',
+  'project-cargo':
+    'All email communications shall be aligned with the following goals:\n' +
+    '- Develop new project cargo clients across the Latin American trade lane.\n' +
+    '- Secure and lock in ocean freight service contracts and booking commitments.\n' +
+    '- Resolve pricing, space allocation and operational challenges for project shipments.\n' +
+    '- Build and sustain long-term, stable, mutually beneficial cooperative relationships with clients and partners.',
 };
 
 /**
@@ -314,11 +322,11 @@ export function buildGoalText(goal: string, customGoalText?: string): string {
   if (!goal || goal === 'none') return '';
 
   if (goal === 'custom' && customGoalText?.trim()) {
-    return `Goal: ${customGoalText.trim()}`;
+    return `Core Goals: ${customGoalText.trim()}`;
   }
 
   const prompt = GOAL_PROMPTS[goal];
-  return prompt ? `Goal: ${prompt}` : '';
+  return prompt ? `Core Goals: ${prompt}` : '';
 }
 
 // ---------------------------------------------------------------------------
