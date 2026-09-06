@@ -18,13 +18,13 @@
  * Placeholders: {{PROFILE}}, {{GOAL}}, {{INSTRUCTIONS}}, {{TONE}},
  *               {{LANGUAGE}}, {{RULES}}
  */
-export const DRAFT_EMAIL_PROMPT =  `[1. Role & Core Goals]
+export const DRAFT_EMAIL_PROMPT = `[1. Role & Core Goals]
 1.1 Role:As a professional email assistant,{{PROFILE}}
 1.2 {{GOAL}}
 
 [2. Output Rules]
 2.1 Writing Guidelines:
-- Language：{{LANGUAGE}}
+- Language:{{LANGUAGE}}
 - Tone: {{TONE}}
 {{RULES}}
 2.2 Output Format Requirements:
@@ -38,10 +38,9 @@ export const DRAFT_EMAIL_PROMPT =  `[1. Role & Core Goals]
 {{INSTRUCTIONS}}
 
 [4.Execute Instructions]
-1. Unless otherwise explicitly stated in content instructions, all output rules shall apply by default.
-2. Focus on the content instructions and comply with all output rules listed, Draft the email body.
-`;
-//Draft a complete email based on the following instructions:
+4.1 If there is any conflict or ambiguity between earlier and later clauses within this prompt, the later clause shall apply.
+4.2 Focus on the content instructions and comply with all output rules listed, Draft the email body.`;
+//1. Unless otherwise explicitly stated in content instructions, all output rules shall apply by default.
 //请遵循输出规则(除非内容说明中另有明确要求),重点围绕内容说明,起草邮件正文.
 
 // ---------------------------------------------------------------------------
@@ -62,7 +61,7 @@ export const REPLY_PROMPT = `[1. Role & Core Goals]
 
 [2. Output Rules]
 2.1 Writing Guidelines:
-- Language：{{LANGUAGE}}
+- Language:{{LANGUAGE}}
 - Tone: {{TONE}}
 - Reference relevant points from the original email naturally.
 {{RULES}}
@@ -73,7 +72,7 @@ export const REPLY_PROMPT = `[1. Role & Core Goals]
 - don't add any commentary outside the reply.
 
 [3.Original Email Context]
-(Email thread, ordered from newest to oldest)
+The email thread is numbered sequentially top to bottom. #1 at the top is the newest email; the highest number at the bottom is the oldest.
 
 {{ORIGINAL_EMAIL}}
 
@@ -81,7 +80,8 @@ export const REPLY_PROMPT = `[1. Role & Core Goals]
 {{REPLY_INSTRUCTIONS}}
 
 [5.Execute Instructions]
-请参考原始邮件内容,遵循输出规则(除非内容说明中另有明确要求),重点围绕内容说明,输出回复正文.`;
+5.1 If there is any conflict or ambiguity between earlier and later clauses within this prompt, the later clause shall apply.
+5.2 请参考原始邮件内容,遵循输出规则,重点围绕内容说明,输出回复正文.`;
 
 // ---------------------------------------------------------------------------
 // Summarize Thread
