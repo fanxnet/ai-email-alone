@@ -27,7 +27,7 @@ export interface GenerateOptions {
   topP?: number;
   /** Top-K sampling. Default: 40 */
   topK?: number;
-  /** Which Gemini model to use. Default: user's saved setting or 'gemini-2.5-flash' */
+  /** Which Gemini model to use. Default: user's saved setting or 'gemini-3.8-flash' */
   model?: string;
   /** Override the adaptive request timeout (ms). */
   timeoutMs?: number;
@@ -46,7 +46,7 @@ export interface GenerateJsonOptions {
   temperature?: number;
   /** Maximum number of tokens in the response. Default: 200 */
   maxOutputTokens?: number;
-  /** Which Gemini model to use. Default: user's saved setting or 'gemini-2.5-flash' */
+  /** Which Gemini model to use. Default: user's saved setting or 'gemini-3.8-flash' */
   model?: string;
   /** System instruction for the model. */
   systemInstruction?: string;
@@ -97,14 +97,14 @@ export { Type };
 // Constants
 // ---------------------------------------------------------------------------
 
-const FALLBACK_MODEL = 'gemini-3-flash-preview';
+const FALLBACK_MODEL = 'gemini-flash-lite-latest';
 
 /**
  * Fast, non-thinking model for simple extraction/utility tasks
  * (translation, action items, summarization, language detection).
  * These tasks don't benefit from deep reasoning and need low latency.
  */
-export const FAST_MODEL = 'gemini-3-flash-preview';
+export const FAST_MODEL = 'gemini-flash-lite-latest';
 
 const DEFAULT_TEMPERATURE = 1.0;
 const DEFAULT_MAX_OUTPUT_TOKENS = 2048;
@@ -172,7 +172,7 @@ export async function generateText(
 ): Promise<string> {
   const client = getClient();
   const modelName = options.model ?? getSetting('defaultModel') ?? FALLBACK_MODEL;
-  const reasoningMode = options.reasoningMode ?? getSetting('reasoningMode') ?? 'off';
+  const reasoningMode = options.reasoningMode ?? getSetting('reasoningMode') ?? 'fast';
 
   const callFn = async (): Promise<string> => {
     try {
@@ -223,7 +223,7 @@ export async function generateJson<T = Record<string, unknown>>(
 ): Promise<T> {
   const client = getClient();
   const modelName = options.model ?? getSetting('defaultModel') ?? FALLBACK_MODEL;
-  const reasoningMode = options.reasoningMode ?? getSetting('reasoningMode') ?? 'off';
+  const reasoningMode = options.reasoningMode ?? getSetting('reasoningMode') ?? 'fast';
 
   const callFn = async (): Promise<T> => {
     try {
@@ -362,7 +362,7 @@ async function collectModelStream(
  *
  * Gemini 2.5 series uses `thinkingBudget` (0 = disabled, -1 = dynamic, or an
  * explicit token count). Versioned Gemini 3 models (e.g. gemini-3.5-flash)
- * use `thinkingLevel` (MINIMAL/LOW/MEDIUM/HIGH).
+ * use `thinkingLevel` (LOW/MEDIUM/HIGH).
  *
  * Ambiguous aliases such as `gemini-flash-latest` / `gemini-flash-lite-latest`
  * do NOT reliably accept `thinkingLevel` (some reject `MINIMAL`), so for those
@@ -378,18 +378,12 @@ function resolveThinkingConfig(
   modelName: string,
   reasoningMode: ReasoningMode,
 ): { thinkingBudget?: number; thinkingLevel?: ThinkingLevel } {
-  const isGemini25 = /gemini-2\.5/i.test(modelName);
-  const isVersionedGemini3 = /^gemini-3[.\-]/i.test(modelName);
-  const useBudget = isGemini25 || !isVersionedGemini3;
-
-  if (useBudget) {
-    if (reasoningMode === 'off') return { thinkingBudget: 0 };
-    if (reasoningMode === 'high') return { thinkingBudget: 16384 };
-    return { thinkingBudget: -1 };
+  if (reasoningMode === 'fast') {
+    return { thinkingLevel: ThinkingLevel.LOW };
   }
-
-  if (reasoningMode === 'off') return { thinkingLevel: ThinkingLevel.MINIMAL };
-  if (reasoningMode === 'high') return { thinkingLevel: ThinkingLevel.HIGH };
+  if (reasoningMode === 'high') {
+    return { thinkingLevel: ThinkingLevel.HIGH };
+  }
   return { thinkingLevel: ThinkingLevel.MEDIUM };
 }
 

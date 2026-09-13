@@ -38,7 +38,7 @@ export type SummaryStyle = "bullets" | "paragraph" | "tldr";
 /** Reasoning effort for generation. 'off' disables model thinking (fast,
  * cheap, avoids the empty-response bug); 'balanced' uses default/dynamic
  * thinking; 'high' requests maximum reasoning depth. */
-export type ReasoningMode = "off" | "balanced" | "high";
+export type ReasoningMode = "fast" | "balanced" | "high";
 
 /** All persisted user preferences. */
 export interface AIComposeSettings {
@@ -118,15 +118,15 @@ const DEFAULT_SETTINGS: AIComposeSettings = {
   presetRules: {
     useTerminology: true,
     useSimpleLanguage: true,
-    keepDetail: true,
+    keepDetail: false,
     keepConcise: false,
-    translateToMail: false,
+    noCommentary: false,
   },
   customRules: "",
   activeCareerId: "",
   conversationContextEnabled: true,
   includeThread: false,
-  reasoningMode: "off",
+  reasoningMode: "fast",
   replyStyleMode: "match-original",
 };
 
@@ -258,8 +258,8 @@ const PRESET_RULE_LABELS: Record<string, string> = {
     'Keep the output detailed and focused. Cover all key information points and stay strictly on topic.',
   keepConcise:
     'Keep the output concise and straight to the point. Respond directly to the core request without redundant wording.',
-  translateToMail:
-    'Translate the content instructions as the ouput. Minor wording revisions and polishing are acceptable.',
+  noCommentary:
+    'Don\'t add any commentary outside the reply.',
 };
 
 export { PRESET_RULE_LABELS };

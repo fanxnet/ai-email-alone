@@ -234,13 +234,13 @@ async function streamChatCompletion(
 function resolveThinkingParams(
   reasoningMode: ReasoningMode,
 ): Record<string, unknown> {
-  if (reasoningMode === 'off') {
+  if (reasoningMode === 'fast') {
     return { thinking: { type: 'disabled' } };
   }
   if (reasoningMode === 'high') {
-    return { thinking: { type: 'enabled' }, reasoning_effort: 'max' };
+    return { thinking: { type: 'enabled' }, reasoning_effort: 'high' };
   }
-  return { thinking: { type: 'enabled' }, reasoning_effort: 'medium' };
+  return { thinking: { type: 'enabled' }, reasoning_effort: 'low' };
 }
 
 /**
@@ -251,7 +251,7 @@ function resolveThinkingParams(
 function emptyResponseError(finishReason?: string): DeepSeekError {
   if (finishReason === 'length') {
     return new DeepSeekError(
-      'The model response was cut off because it reached the maximum output token limit. Try again, use a shorter request, or disable "Reasoning" mode.',
+      'The model response was cut off because the test reached the maximum output token limit. Try again, use a shorter request, or disable "Reasoning" mode.',
       DeepSeekErrorCode.EMPTY_RESPONSE,
       false,
     );
@@ -414,8 +414,8 @@ export async function generateText(
   if (!deepseekApiKey) {
     throw new Error('DeepSeek client not initialised. Call initDeepSeekClient first.');
   }
-  const modelName = options.model ?? getSetting('defaultModel') ?? 'deepseek-v4-flash';
-  const reasoningMode = options.reasoningMode ?? getSetting('reasoningMode') ?? 'off';
+  const modelName = options.model ?? getSetting('defaultModel') ?? 'deepseek-flash';
+  const reasoningMode = options.reasoningMode ?? getSetting('reasoningMode') ?? 'fast';
 
   const callFn = async () => {
     const { text, finishReason } = await streamChatCompletion(
@@ -445,8 +445,8 @@ export async function generateJson<T = Record<string, unknown>>(
   if (!deepseekApiKey) {
     throw new Error('DeepSeek client not initialised. Call initDeepSeekClient first.');
   }
-  const modelName = options.model ?? getSetting('defaultModel') ?? 'deepseek-v4-flash';
-  const reasoningMode = options.reasoningMode ?? getSetting('reasoningMode') ?? 'off';
+  const modelName = options.model ?? getSetting('defaultModel') ?? 'deepseek-flash';
+  const reasoningMode = options.reasoningMode ?? getSetting('reasoningMode') ?? 'fast';
 
   const callFn = async () => {
     const { text, finishReason } = await streamChatCompletion(

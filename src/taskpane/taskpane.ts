@@ -288,14 +288,14 @@ function updateModelDropdown(provider: string, currentModel?: string): void {
 
   const models = provider === 'deepseek'
     ? [
-        { value: 'deepseek-v4-flash', text: 'deepseek-v4-flash' },
+        { value: 'deepseek-flash', text: 'deepseek-flash' },
         { value: 'deepseek-v4-pro', text: 'deepseek-v4-pro' }
       ]
     : [
-        { value: 'gemini-3.5-flash', text: 'gemini-3.5-flash' },
+        { value: 'gemini-3.8-flash', text: 'gemini-3.8-flash' },
         { value: 'gemini-flash-latest', text: 'gemini-flash-latest' },
         { value: 'gemini-flash-lite-latest', text: 'gemini-flash-lite-latest' },
-        { value: 'gemini-2.5-pro', text: 'gemini-2.5-pro' }
+        { value: 'gemini-3.1-pro', text: 'gemini-3.1-pro' }
       ];
 
   models.forEach(m => {
@@ -308,7 +308,7 @@ function updateModelDropdown(provider: string, currentModel?: string): void {
   if (currentModel) {
     modelSelect.value = currentModel;
   } else {
-    modelSelect.value = provider === 'deepseek' ? 'deepseek-v4-flash' : 'gemini-flash-latest';
+    modelSelect.value = provider === 'deepseek' ? 'deepseek-flash' : 'gemini-flash-latest';
   }
 }
 
@@ -780,7 +780,7 @@ window.addEventListener('beforeunload', () => abortDeepSeekRequest());
 async function handleGenerateReply(): Promise<void> {
   const instructions = ($('reply-instructions') as HTMLTextAreaElement)?.value || '';
   const tone = ($('reply-tone') as HTMLSelectElement)?.value || 'professional';
-  const reasoningMode = ($('reply-reasoning') as HTMLSelectElement)?.value as ReasoningMode || 'off';
+  const reasoningMode = ($('reply-reasoning') as HTMLSelectElement)?.value as ReasoningMode || 'fast';
   const language = ($('reply-language') as HTMLSelectElement)?.value || 'auto';
   const goal = ($('reply-goal') as HTMLSelectElement)?.value || 'none';
   const customGoal = ($('reply-goal-custom') as HTMLInputElement)?.value || '';
@@ -1434,7 +1434,7 @@ Office.onReady((info) => {
 
       // Reasoning mode select (defaults to persisted setting)
       const replyReasoning = $('reply-reasoning') as HTMLSelectElement | null;
-      if (replyReasoning) replyReasoning.value = s.reasoningMode || 'off';
+      if (replyReasoning) replyReasoning.value = s.reasoningMode || 'fast';
 
       // Summary style radio buttons
       const summaryRadio = document.querySelector(
@@ -1872,7 +1872,7 @@ Office.onReady((info) => {
     $('btn-save-settings')?.addEventListener('click', () => {
       const provider = ($('settings-provider') as HTMLSelectElement)?.value as 'gemini' | 'deepseek' || 'gemini';
       const apiKey = ($('settings-api-key') as HTMLInputElement)?.value?.trim() || '';
-      const model = ($('settings-model') as HTMLSelectElement)?.value || (provider === 'deepseek' ? 'deepseek-v4-flash' : 'gemini-flash-latest');
+      const model = ($('settings-model') as HTMLSelectElement)?.value || (provider === 'deepseek' ? 'deepseek-flash' : 'gemini-flash-latest');
       const tone = ($('settings-tone') as HTMLSelectElement)?.value || 'professional';
       const summaryStyle = ($('settings-summary-style') as HTMLSelectElement)?.value || 'bullets';
       const replyStyle = ($('settings-reply-style') as HTMLSelectElement)?.value || 'match-original';
@@ -1965,7 +1965,8 @@ Office.onReady((info) => {
         }
         try {
           await generateText('Say hello in one word.', {
-            maxOutputTokens: 20,
+            maxOutputTokens: 50,
+          //  reasoningMode: 'fast',
             temperature: 0.5,
           });
         } catch (testErr: any) {

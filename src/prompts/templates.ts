@@ -23,15 +23,14 @@ export const DRAFT_EMAIL_PROMPT = `[1. Role & Core Goals]
 1.2 {{GOAL}}
 
 [2. Output Rules]
-2.1 Writing Guidelines:
+2.1 Body Writing Guidelines:
 - Language:{{LANGUAGE}}
 - Tone: {{TONE}}
 {{RULES}}
-2.2 Output Format Requirements:
+2.2 Body Format:
 - Include a subject line on the first line prefixed with "Subject: ".
 - Use an appropriate greeting.
-- don't add a subject,sign-off or signature(e.g. "Regards", "Sincerely").
-- don't add any commentary outside the reply.
+- Don't add a subject,sign-off or signature(e.g. "Regards", "Sincerely").
 - Don't include placeholder like [Your Name], [Company], or [Recipient].
 
 [3.Content Instructions(strictly)]
@@ -52,24 +51,23 @@ export const DRAFT_EMAIL_PROMPT = `[1. Role & Core Goals]
  *
  * Placeholders: {{PROFILE}}, {{GOAL}}, {{ORIGINAL_EMAIL}},
  *               {{REPLY_INSTRUCTIONS}}, {{TONE}}, {{LANGUAGE}},
- *               {{REPLY_TO_NAME}}, {{RULES}}
- *discard {{RULES}}
+ *               {{REPLY_TO_NAME}}, {{RULES}}, {{EXECUTEOUTPUT}}
+ - don't add any commentary outside the reply.
  */
 export const REPLY_PROMPT = `[1. Role & Core Goals]
 1.1 Role:As a professional email assistant,{{PROFILE}}
 1.2 {{GOAL}}
 
 [2. Output Rules]
-2.1 Writing Guidelines:
+2.1 Body Writing Guidelines:
 - Language:{{LANGUAGE}}
 - Tone: {{TONE}}
 - Reference relevant points from the original email naturally.
 {{RULES}}
-2.2 Output Format Requirements:
+2.2 Body Format:
 - Address the reply to: {{REPLY_TO_NAME}} 
 - Must include a salutation.
-- don't add a subject,sign-off or signature(e.g. "Regards", "Sincerely").
-- don't add any commentary outside the reply.
+- Don't add a subject,sign-off or signature(e.g. "Regards", "Sincerely").
 
 [3.Original Email Context]
 The email thread is numbered sequentially top to bottom. #1 at the top is the newest email; the highest number at the bottom is the oldest.
@@ -81,7 +79,7 @@ The email thread is numbered sequentially top to bottom. #1 at the top is the ne
 
 [5.Execute Instructions]
 5.1 If there is any conflict or ambiguity between earlier and later clauses within this prompt, the later clause shall apply.
-5.2 请参考原始邮件内容,遵循输出规则,重点围绕内容说明,输出回复正文.`;
+{{EXECUTEOUTPUT}}`;
 
 // ---------------------------------------------------------------------------
 // Summarize Thread
