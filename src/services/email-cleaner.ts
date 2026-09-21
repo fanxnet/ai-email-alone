@@ -1,18 +1,57 @@
 const THREAD_BLOCK_STARTERS = [
+    // English
     'From:',
+    'From :',
+    'Sender:',
+    'Sender :',
+    // German
     'Von:',
+    'Von :',
+    // Spanish
     'De:',
+    'De :',
+    'Remitente:',
+    'Remitente :',
+    // French
+    'Expéditeur:',
+    'Expéditeur :',
+    'De:',
+    'De :',
+    // Portuguese
+    'Remetente:',
+    'Remetente :',
+    'De:',
+    'De :',
+    // Italian
+    'Mittente:',
+    'Mittente :',
+    'Da:',
+    'Da :',
+    // Korean
+    '보낸 사람:',
+    '보낸 사람 :',
+    '보낸사람:',
+    '보낸사람 :',
+    // Japanese
+    '差出人：',
+    '差出人:',
+    '送信者：',
+    '送信者:',
+    // Chinese (Simplified)
     '发件人：',
     '发件人:',
-    'Sender:',
-    'Expéditeur :',
-    'Remitente:',
-    'Remetente:',
-    'Mittente:',
+    '来自：',
+    '寄件人：',
+    // Chinese (Traditional / Taiwan)
+    '寄件者：',
+    '寄件者:',
+    // Russian
     'От:',
-    '差出人：',
-    '보낸 사람:'
+    'От :',
+    'От кого:',
+    'От кого :',
 ];
+
 const HEADER_REMOVE_LIST = [
     'Subject:', 'To:', 'Cc:', 'Sent:', 'Date:',
     'Betreff:', 'An:', 'Kopie:', 'Gesendet:', 'Datum:',
@@ -27,52 +66,81 @@ const HEADER_REMOVE_LIST = [
     'Enviada em:'
 ];
 const SIGNATURE_TRIGGERS = [
+    // English
     'Best regards',
     'Kind regards',
     'Regards',
-    'Best Wishes',
-    'Wishes',
+    'Best wishes',
+    'Warm regards',
+    'Sincerely',
+    'Respectfully',
+    'All the best',
     'Thanks',
     'Thank you',
-    'Sincerely',
-    'Mit freundlichen Grüßen',
-    'Saludos',
-    'Saludos cordiales',
-    'Atentamente',
+    'With appreciation',
+    // Portuguese
     'Atenciosamente',
-    'atencionalmente',
-    'Salutos',
-    'Viele Grüße',
-    'Liebe Grüße',
-    'Cordialement',
-    'Bien à vous',
-    'Merci',
-    'Muchas gracias',
+    'Atencionalmente',
     'Saudações',
     'Obrigado',
+    'Cordialmente',
+    'Grato',
+    'Grata',
+    // Spanish
+    'Saludos',
+    'Saludos cordiales',
+    'Un cordial saludo',
+    'Atentamente',
+    'Saludos atentos',
+    'Muchas gracias',
+    'Quedo atento',
+    // French
+    'Cordialement',
+    'Bien cordialement',
+    'Bien à vous',
+    'Respectueusement',
+    'Avec mes salutations distinguées',
+    'Merci',
+    // German
+    'Mit freundlichen Grüßen',
+    'Viele Grüße',
+    'Liebe Grüße',
+    'Beste Grüße',
+    'Hochachtungsvoll',
+    // Italian
     'Cordiali saluti',
     'Grazie',
-    'С уважением',
-    'Спасибо',
+    // Korean
+    '감사합니다.',
+    '감사드립니다',
+    '고맙습니다',
+    // Japanese
     'よろしくお願いいたします',
     '宜しくお願い致します',
-    '감사합니다.',
-    '顺颂商祺',
-    '祝好',
-    '此致',
-    '敬礼',
+    '何卒よろしくお願い申し上げます',
+    // Russian
+    'С уважением',
+    'Спасибо',
+    // Common shorthand (shipping/logistics)
     'Tks',
     'Tks and B. Rgds',
     'Tks & B rgds',
     'Tks n rgds',
     'BRgds',
+    // Chinese
+    '顺颂商祺',
+    '祝好',
+    '此致',
+    '敬礼',
 ];
 
+
 const SIGNATURE_NAMES = [
-    'Angelina Liu',
-    'Excited to work on this',
     'Thank you so much',
     'Thank you very much',
+    'Excited to work on this',
+    'Angelina Liu',
+    'Parisi Grand Smooth Logistics Ltd.',
 ];
 
 const starterKeywords = THREAD_BLOCK_STARTERS.map(s=>escapeRegExp(s)).join('|');
@@ -105,17 +173,17 @@ function escapeRegExp(str: string): string {
 const salutePattern = SIGNATURE_TRIGGERS
     .map(escapeRegExp)
     .join('|');
-/*// 长词优先排序，防止短词抢先匹配长词组
+
+/*/ 长词优先排序，防止短词抢先匹配长词组
 const salutePattern = [...SIGNATURE_TRIGGERS]
     .sort((a, b) => b.length - a.length)
     .map(escapeRegExp)
     .join('|');
 */
-
 // 关键修复：移除末尾 $ 行尾锚点！
-// 只要存在一对 关键词 / 关键词，后面还可以有更多链式内容
+// 只要存在一对 关键词 (/ & , and | 分隔符)关键词，后面还可以有更多链式内容
 const multiSaluteRx = new RegExp(
-    `(${salutePattern})\\s*(?:\\/|&)\\s*(${salutePattern})\\s*[,.!~;]*`,
+    `(${salutePattern})\\s*(?:\\/|&|,|and|\\|)\\s*(${salutePattern})\\s*[,.!~;]*`,
     'i'
 );
 
