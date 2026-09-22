@@ -74,10 +74,8 @@ const SIGNATURE_TRIGGERS = [
     'Warm regards',
     'Sincerely',
     'Respectfully',
-    'All the best',
     'Thanks',
     'Thank you',
-    'With appreciation',
     // Portuguese
     'Atenciosamente',
     'Atencionalmente',
@@ -94,6 +92,7 @@ const SIGNATURE_TRIGGERS = [
     'Saludos atentos',
     'Muchas gracias',
     'Quedo atento',
+    'Cordial Saludo',
     // French
     'Cordialement',
     'Bien cordialement',
@@ -123,10 +122,18 @@ const SIGNATURE_TRIGGERS = [
     'Спасибо',
     // Common shorthand (shipping/logistics)
     'Tks',
-    'Tks and B. Rgds',
-    'Tks & B rgds',
-    'Tks n rgds',
+    'Thks',
+    'B. Rgds',
+    'B.Rgds',
+    'B rgds',
     'BRgds',
+    'Tks n rgds',
+    'Yours sincerely',
+    'Yours truly',
+    'Yours respectfully',
+    'Yours kindly',
+    'Yours faithfully',
+    'All the best',
     // Chinese
     '顺颂商祺',
     '祝好',
@@ -138,9 +145,11 @@ const SIGNATURE_TRIGGERS = [
 const SIGNATURE_NAMES = [
     'Thank you so much',
     'Thank you very much',
+    'Thank you in advance',
     'Excited to work on this',
     'Angelina Liu',
     'Parisi Grand Smooth Logistics Ltd.',
+    'With appreciation',
 ];
 
 const starterKeywords = THREAD_BLOCK_STARTERS.map(s=>escapeRegExp(s)).join('|');
@@ -200,7 +209,7 @@ function lineTriggerSignature(line: string): boolean {
     if (lowerLine.startsWith('dear ')) return false;
 
     const MAX_PREFIX = 2;
-    const MAX_TAIL_CHARS = 8;
+    const MAX_TAIL_CHARS = 5;
 
     // 1.普通单行问候关键词检测
     for (const keyword of SIGNATURE_TRIGGERS) {
@@ -225,7 +234,7 @@ function lineTriggerSignature(line: string): boolean {
         const nameLower = name.toLowerCase();
         if (lowerLine.startsWith(nameLower)) {
             const tailLength = trimmed.length - nameLower.length;
-            if (tailLength <= 6) {
+            if (tailLength <= MAX_TAIL_CHARS) {
                 return true;
             }
         }
