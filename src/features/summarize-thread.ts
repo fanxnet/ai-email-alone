@@ -72,8 +72,10 @@ export async function summarizeThread(
       getCurrentEmailSubject(),
       getEmailSender(),
     ]);
-
-    rawThread = `From: ${sender.name} <${sender.email}>\nSubject: ${subject}\n\n${body}`;
+    const { buildThreadBodyText, cleanThreadEmails } = await import('../services/email-cleaner');
+    const { MAX_KEEP_REPLIES } = await import('../features/draft-reply');
+    const emailBody = await cleanThreadEmails(buildThreadBodyText(body ?? '', MAX_KEEP_REPLIES),true);
+    rawThread = `From: ${sender.name} <${sender.email}>\nSubject: ${subject}\n\n${emailBody}`;
   }
 
   if (!rawThread.trim()) {
@@ -184,11 +186,11 @@ function buildLengthStyleHint(length: SummaryLength, style: SummaryStyle): strin
 function getMaxTokensForLength(length: SummaryLength): number {
   switch (length) {
     case 'brief':
-      return 256;
+      return 1024;
     case 'detailed':
-      return 2048;
+      return 4096;
     case 'standard':
     default:
-      return 1024;
+      return 2048;
   }
 }
