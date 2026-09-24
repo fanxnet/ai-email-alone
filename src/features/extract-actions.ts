@@ -8,7 +8,7 @@
  */
 
 import { generateText } from '../services/ai-service';
-import { buildPrompt, truncateContext } from '../prompts/builder';
+import { buildPrompt, truncateContext, MAX_EMAILBODY_TOKENS } from '../prompts/builder';
 import { EXTRACT_ACTION_ITEMS_PROMPT } from '../prompts/templates';
 import {
   getCurrentEmailBody,
@@ -31,9 +31,6 @@ export interface ActionItem {
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
-
-/** Max tokens of email content to send for action-item extraction. */
-const MAX_CONTENT_TOKENS = 6000;
 
 // ---------------------------------------------------------------------------
 // State
@@ -60,7 +57,7 @@ export async function extractActionItems(
     throw new Error('No email content found. Please open an email first.');
   }
 
-  const emailContent = truncateContext(emailBody, MAX_CONTENT_TOKENS);
+  const emailContent = truncateContext(emailBody, MAX_EMAILBODY_TOKENS);
   const prompt = buildPrompt(EXTRACT_ACTION_ITEMS_PROMPT, {
     EMAIL_CONTENT: emailContent,
   });
