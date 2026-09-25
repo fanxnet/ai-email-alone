@@ -56,7 +56,9 @@ export interface AIComposeSettings {
   defaultTone: Tone;
   /** Default summary style for Summarize. */
   defaultSummaryStyle: SummaryStyle;
-  /** Default target language for Translate and Summarize (shared). */
+  /** Default target language shared by Translate, Summarize, and Extract.
+   *  May be 'auto' (match the email language) — Translate falls back to
+   *  Chinese (Simplified) when displaying/executing 'auto'. */
   defaultLanguage: string;
   /**
    * Persisted Reply-language dropdown value.
@@ -112,7 +114,7 @@ const DEFAULT_SETTINGS: AIComposeSettings = {
   defaultModel: "gemini-flash-latest",
   defaultTone: "professional",
   defaultSummaryStyle: "bullets",
-  defaultLanguage: "English",
+  defaultLanguage: "Chinese (Simplified)",
   replyLanguage: "English",
   draftLanguage: "English",
   presetRules: {

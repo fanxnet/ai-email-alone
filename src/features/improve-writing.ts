@@ -80,7 +80,7 @@ export async function improveWriting(
 
   const result = await generateText(prompt, {
     temperature: 0.3,
-    maxOutputTokens: 2048,
+    maxOutputTokens: 4096,
     onStream,
   });
 
@@ -108,7 +108,7 @@ export async function regenerateImprovement(onStream?: (delta: string) => void):
  * Accept the improved text — replace the body in compose mode.
  * In read mode, copies to clipboard instead.
  */
-export async function acceptChanges(): Promise<'replaced' | 'copied'> {
+export async function acceptChanges(): Promise<'inserted' | 'copied'> {
   if (!improvedText) {
     throw new Error('No improved text to accept.');
   }
@@ -116,8 +116,8 @@ export async function acceptChanges(): Promise<'replaced' | 'copied'> {
   const mode = getItemMode();
 
   if (mode === 'compose') {
-    await replaceComposeBody(improvedText);
-    return 'replaced';
+    await prependToComposeBody(improvedText);
+    return 'inserted';
   } else {
     // Read mode — copy to clipboard
     await copyToClipboard(improvedText);
@@ -149,8 +149,12 @@ async function readSourceText(): Promise<string> {
     }
   }
 
-  // Fall back to full body
-  return getCurrentEmailBody();
+  // Fall back to newest body (KEEP_REPLIES = 0)
+  const body = await getCurrentEmailBody();
+  const { buildThreadBodyText, cleanThreadEmails } = await import('../services/email-cleaner');
+  const KEEP_REPLIES = 0;
+  const emailBody = await cleanThreadEmails(buildThreadBodyText(body ?? '', KEEP_REPLIES),true);
+  return emailBody;
 }
 
 function getSelectedText(): Promise<string> {
@@ -183,7 +187,7 @@ function getSelectedText(): Promise<string> {
 // Body replacement
 // ---------------------------------------------------------------------------
 
-function replaceComposeBody(text: string): Promise<void> {
+function prependToComposeBody(text: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const item = Office.context.mailbox.item;
     if (!item || !('body' in item)) {
@@ -191,14 +195,14 @@ function replaceComposeBody(text: string): Promise<void> {
       return;
     }
 
-    (item as any).body.setAsync(
-      text,
+    (item as any).body.prependAsync(
+      text + '\n\n---------\n',
       { coercionType: Office.CoercionType.Text },
       (result: Office.AsyncResult<void>) => {
         if (result.status === Office.AsyncResultStatus.Succeeded) {
           resolve();
         } else {
-          reject(new Error(result.error?.message || 'Failed to replace body'));
+          reject(new Error(result.error?.message || 'Failed to prepend to body'));
         }
       },
     );

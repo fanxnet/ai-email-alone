@@ -1171,8 +1171,8 @@ async function handleAcceptChanges(): Promise<void> {
     const btn = $('btn-accept-changes');
     if (btn) {
       const original = btn.innerHTML;
-      const msg = action === 'replaced'
-        ? '<i class="ms-Icon ms-Icon--CheckMark"></i> Replaced!'
+      const msg = action === 'inserted'
+        ? '<i class="ms-Icon ms-Icon--CheckMark"></i> Inserted at top!'
         : '<i class="ms-Icon ms-Icon--CheckMark"></i> Copied!';
       btn.innerHTML = msg;
       btn.classList.add('aic-btn--success');
@@ -1194,6 +1194,8 @@ async function handleExtract(): Promise<void> {
   hideError();
   showLoading('Scanning for action items...');
 
+  const language = ($('extract-language') as HTMLSelectElement)?.value || 'auto';
+
   const writer = streamInto('extract-checklist');
   writer?.onFirst(() => {
     showElement('extract-result-section');
@@ -1201,7 +1203,7 @@ async function handleExtract(): Promise<void> {
   });
 
   try {
-    const items = await extractActionItems((delta) => writer?.append(delta));
+    const items = await extractActionItems((delta) => writer?.append(delta), language);
     writer?.finish();
     const container = $('extract-checklist');
     if (container) {
@@ -1221,6 +1223,8 @@ async function handleRegenerateExtract(): Promise<void> {
   hideError();
   showLoading('Re-scanning for action items...');
 
+  const language = ($('extract-language') as HTMLSelectElement)?.value || 'auto';
+
   const writer = streamInto('extract-checklist');
   writer?.onFirst(() => {
     showElement('extract-result-section');
@@ -1228,7 +1232,7 @@ async function handleRegenerateExtract(): Promise<void> {
   });
 
   try {
-    const items = await regenerateActions((delta) => writer?.append(delta));
+    const items = await regenerateActions((delta) => writer?.append(delta), language);
     writer?.finish();
     const container = $('extract-checklist');
     if (container) {
@@ -1406,23 +1410,8 @@ Office.onReady((info) => {
       );
     }
 
-    // Load settings and initialize clients
+    // Load settings
     const settings = loadSettings();
-    try {
-      if (settings.aiProvider === 'deepseek') {
-        const apiKey = settings.deepseekApiKey || '';
-        if (apiKey) {
-          initDeepSeekClient(apiKey);
-        }
-      } else {
-        const apiKey = settings.geminiApiKey || (window as any).__AICompose_API_KEY__ || '';
-        if (apiKey) {
-          initGeminiClient(apiKey);
-        }
-      }
-    } catch {
-      // Client will be initialized when settings are saved
-    }
 
     // Populate feature defaults from settings
     const applySettingsToForms = (s: AIComposeSettings): void => {
@@ -1450,13 +1439,23 @@ Office.onReady((info) => {
       const draftLang = $('draft-language') as HTMLSelectElement | null;
       if (draftLang) draftLang.value = s.draftLanguage || 'English';
 
-      // Translation language (shared with Summarize via defaultLanguage)
+      // Shared language (Translate / Summarize / Extract via defaultLanguage)
       const langSelect = $('translate-language') as HTMLSelectElement | null;
-      if (langSelect) langSelect.value = s.defaultLanguage || 'English';
+      if (langSelect) {
+        // Translate has no 'auto' option — fall back to Chinese (Simplified)
+        // for display/execution without persisting (keeps shared 'auto' intact).
+        if (!s.defaultLanguage || s.defaultLanguage === 'auto') {
+          langSelect.value = 'Chinese (Simplified)';
+        } else {
+          langSelect.value = s.defaultLanguage;
+        }
+      }
 
-      // Summary language (shared with Translate via defaultLanguage)
       const summaryLang = $('summary-language') as HTMLSelectElement | null;
       if (summaryLang) summaryLang.value = s.defaultLanguage || 'English';
+
+      const extractLang = $('extract-language') as HTMLSelectElement | null;
+      if (extractLang) extractLang.value = s.defaultLanguage || 'auto';
 
       // Settings form itself
       const sProvider = $('settings-provider') as HTMLSelectElement | null;
@@ -1518,11 +1517,6 @@ Office.onReady((info) => {
       if (!sel) return;
       saveSettings({ ...loadSettings(), draftLanguage: sel.value || 'English' });
     };
-    const persistTranslateLanguage = (): void => {
-      const sel = $('translate-language') as HTMLSelectElement | null;
-      if (!sel) return;
-      saveSettings({ ...loadSettings(), defaultLanguage: sel.value || 'English' });
-    };
     const persistReplyReasoning = (): void => {
       const sel = $('reply-reasoning') as HTMLSelectElement | null;
       if (!sel) return;
@@ -1530,16 +1524,40 @@ Office.onReady((info) => {
     };
     $('reply-language')?.addEventListener('change', persistReplyLanguage);
     $('draft-language')?.addEventListener('change', persistDraftLanguage);
-    $('translate-language')?.addEventListener('change', persistTranslateLanguage);
     $('reply-reasoning')?.addEventListener('change', persistReplyReasoning);
+    // Shared defaultLanguage persistence (Translate / Summarize / Extract).
+    // Writing one dropdown syncs the other two in real time.
+    const syncLanguageDropdowns = (value: string): void => {
+      const summaryLang = $('summary-language') as HTMLSelectElement | null;
+      if (summaryLang) summaryLang.value = value;
 
-    // Summary language persistence (writes to shared defaultLanguage)
-    const persistSummaryLanguage = (): void => {
-      const sel = $('summary-language') as HTMLSelectElement | null;
-      if (!sel) return;
-      saveSettings({ ...loadSettings(), defaultLanguage: sel.value || 'English' });
+      const extractLang = $('extract-language') as HTMLSelectElement | null;
+      if (extractLang) extractLang.value = value;
+
+      // Translate has no 'auto' option — show fallback display value only.
+      const translateLang = $('translate-language') as HTMLSelectElement | null;
+      if (translateLang) {
+        translateLang.value = value === 'auto' || !value ? 'Chinese (Simplified)' : value;
+      }
     };
-    $('summary-language')?.addEventListener('change', persistSummaryLanguage);
+
+    const persistDefaultLanguage = (value: string): void => {
+      saveSettings({ ...loadSettings(), defaultLanguage: value || 'English' });
+      syncLanguageDropdowns(value || 'English');
+    };
+
+    $('translate-language')?.addEventListener('change', () => {
+      const sel = $('translate-language') as HTMLSelectElement | null;
+      if (sel) persistDefaultLanguage(sel.value || 'English');
+    });
+    $('summary-language')?.addEventListener('change', () => {
+      const sel = $('summary-language') as HTMLSelectElement | null;
+      if (sel) persistDefaultLanguage(sel.value || 'English');
+    });
+    $('extract-language')?.addEventListener('change', () => {
+      const sel = $('extract-language') as HTMLSelectElement | null;
+      if (sel) persistDefaultLanguage(sel.value || 'auto');
+    });
 
     // --- Outlook theme detection (light/dark) ---
     try {
